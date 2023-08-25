@@ -13,7 +13,6 @@ import random
 import glob
 from psychopy import visual, event, core, gui, data, monitors
 
-
 # %% Image Paths
 ## For the entire folder
 # face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/STIMULI/*face*.jpg")
