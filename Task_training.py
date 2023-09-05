@@ -8,7 +8,10 @@ Created on Thu Aug 17 11:01:16 2023
 # %% Package imports 
 
 import os
+import numpy as np
 import numpy.random as rnd
+from PIL import Image
+import csv
 import random
 import glob
 from psychopy import visual, event, core, gui, data, monitors
@@ -55,7 +58,8 @@ exp_info['exp_name'] = exp_name
 
 # %% Creation of a dictonary with all the instruction
 
-instruction_dictionary = {'instructions.text' : "Dans cette étude ... \n\nVotre tâche est d'indiquer",
+instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'un part et d'autre de l'écran. \n\nVotre tâche sera de regarder le plus vite possible vers l'image qui sera définie au préalable comme cible.",
+                          'instructions.text2' : "Les cibles seront soit des visages soit des véhicules",
                           'instructions.faces' : "Dans ce bloc, votre tâche est de regarder les VISAGES\n\n Appuyez sur la barre ESPACE pour commencer",
                           'instructions.vehicles' : "Dans ce bloc, votre tâche est de regarder les VEHICULES\n\n Appuyez sur la barre ESPACE pour commencer",
                           'timertext.text':"Prêt",
@@ -92,6 +96,49 @@ win = visual.Window(monitor = mon,
 # Hide the cursor when the window is opened
 win.mouseVisible=False
 
+# # %% Opening a file for writing the data
+# if not os.path.isdir(dataPath):
+#     os.makedirs(dataPath)
+# fieldnames=list(blocks[0][0].keys())
+# data_fname = exp_info['participant'] + '_' + exp_info['age'] + '_' + exp_info['gender'][0] + '_' + exp_info['date'] + '.csv'
+# data_fname = os.path.join(dataPath, data_fname)
+# f = open(data_fname,'w',encoding='UTF8', newline='')
+# writer=csv.DictWriter(f, fieldnames=fieldnames)
+# writer.writeheader()
+
+# %% Display instructions
+
+instructions = visual.TextStim(win=win,
+    pos=[0,0], 
+    wrapWidth=None, height=1.25, font="Palatino Linotype", alignHoriz='center', color = 'white')
+
+instructions.text = instruction_dictionary['instructions.text']
+instructions.draw()
+
+win.flip() 
+keys = event.waitKeys(keyList=['space','escape'])
+
+# Adding other instructions
+instructions = visual.TextStim(win=win,
+    pos=[0,0], 
+    wrapWidth=None, height=1.25, font="Palatino Linotype", alignHoriz='center', color = 'white')
+
+instructions.text = instruction_dictionary['instructions.text2']
+instructions.draw()
+
+# Adding examples
+image_path1 = os.path.join(image_directory, "face_beautiful-1996283_cut_300_Norm_RGB.jpg")  # Replace with your image path
+bitmap_im = Image.open(image_path1)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[-13, 0], size=6)
+image_stim.draw()
+
+image_path2 = os.path.join(image_directory, "vehicle_volkswagen-569315_1920_cut_300_Norm_RGB.jpg")  # Replace with your image path
+bitmap_im = Image.open(image_path2)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[13, 0], size=6)
+image_stim.draw()
+
+win.flip() 
+keys = event.waitKeys(keyList=['space','escape'])
 # %% Preparing the experiment
 
 # Define fixation cross
@@ -111,58 +158,61 @@ layout_direction = exp_info['Layout']
 
 # Function to display target information and wait for key press
 def display_target_info(win, target_text):
+    # Create a visual stimulus for displaying target information
     target_info_text = visual.TextStim(win, text=target_text, color='white', height=1.5, pos=(0, 0))
+    # Draw the target information on the window
     target_info_text.draw()
+    # Display the window with the target information
     win.flip()
+    # Wait for a key response (space or escape)
     event.waitKeys(keyList=['space', 'escape'])
-
 
 # Function to run a trial
 def run_trial(win, target_image, distractor_image, layout_direction):
-    fixation_duration = rnd.uniform(0.8, 1.6)
-    fixation_cross.draw()
+    # Generate a random fixation duration between 0.8 and 1.6 seconds
+    fixation_duration = rnd.uniform(0.8, 1.6) 
+    fixation_cross.draw() # Display the fixation cross
     win.flip()
-    core.wait(fixation_duration)
-
+    core.wait(fixation_duration) # Wait for the fixation duration to pass
+    # Clear the window and wait for a brief period (0.2 seconds)
     win.flip()
     core.wait(0.2)
-
+    # Draw and display the target and distractor images
     target_image.draw()
     distractor_image.draw()
     win.flip()
+    # Wait for 0.4 seconds to display the images
     core.wait(0.4)
-
+    # Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
     core.wait(1.0)
 
 ### Function that draws a break between blocks, shows which block they are at,
 # and takes as arguments block no, the break time between each block, and a
-# long break at every 6th block.    
+# long break at every x block.
 def block_break(block_no, totalblocks, timershort, timerlong):
-    timer = timershort
+    # Determine the timer duration based on block number
+    timer = timerlong if block_no % 3 == 0 else timershort
+    
+    # Create a visual stimulus for the block's text
     blocktext = visual.TextStim(
         win=win,
         height=1,
         font="Palatino Linotype",
         alignHoriz='center')
     
+    blocktext.text = instruction_dictionary['blocktext1.text'] + str(timer) + instruction_dictionary['blocktext2.text'] + str(block_no) + "/" + str(totalblocks)
+    
+    # Create a visual stimulus for the timer text
     timertext = visual.TextStim(
         win=win,
         height=1,
         pos=[0, -6],
         font="Palatino Linotype",
-        alignHoriz='center')
+        alignHoriz='center',
+        text=instruction_dictionary['timertext.text'])
     
-    if block_no % 3 == 0:
-        timer = timerlong
-    blocktext.text = (
-        instruction_dictionary['blocktext1.text']
-        + str(timer)
-        + instruction_dictionary['blocktext2.text']
-        + str(block_no)
-        + """/"""
-        + str(totalblocks)
-    )
+    # Countdown and display the timer
     for time in range(timer, 0, -1):
         blocktext.draw()
         timertext.text = ":" + str(time)
@@ -170,11 +220,13 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         win.flip()
         core.wait(1)
     
+    # Display "ready" when the timer is over    
     timertext.text = instruction_dictionary['timertext.text']
     blocktext.draw()
     timertext.draw()
     win.flip()
-
+    
+    # Close the window if escape or space keys are pressed
     keys = event.waitKeys(keyList=['space', 'escape'])
     if 'escape' in keys:
         win.close()
