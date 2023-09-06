@@ -11,7 +11,6 @@ import os
 import numpy as np
 import numpy.random as rnd
 from PIL import Image
-import csv
 import random
 import glob
 from psychopy import visual, event, core, gui, data, monitors
@@ -96,7 +95,7 @@ win = visual.Window(monitor = mon,
 # Hide the cursor when the window is opened
 win.mouseVisible=False
 
-# # %% Opening a file for writing the data
+# %% Opening a file for writing the data
 # if not os.path.isdir(dataPath):
 #     os.makedirs(dataPath)
 # fieldnames=list(blocks[0][0].keys())
@@ -139,6 +138,7 @@ image_stim.draw()
 
 win.flip() 
 keys = event.waitKeys(keyList=['space','escape'])
+
 # %% Preparing the experiment
 
 # Define fixation cross
@@ -150,8 +150,8 @@ fixation_cross = visual.TextStim(win,
                                  bold=False)
 
 # Number of blocks and trials per block
-num_blocks = 5
-trials_per_block = 10
+num_blocks = 10
+trials_per_block = 1
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
@@ -233,9 +233,16 @@ def block_break(block_no, totalblocks, timershort, timerlong):
     win.flip()
 
 # %% Starting the experiment 
+
+# Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
+condition_order = [0, 1] * (num_blocks // 2)  # Create a list of block order
+
+# Randomize the order of block presentation
+random.shuffle(condition_order)
+
 # Loop through blocks
 for block in range(num_blocks):
-    if block % 2 == 0:
+    if condition_order[block] == 0:
         target_images = face_images
         distractor_images = vehicle_images
         target_text = instruction_dictionary['instructions.faces']
@@ -267,6 +274,7 @@ for block in range(num_blocks):
             distractor_x_position = -target_x_position
             target_image.pos = (target_x_position, 0)
             distractor_image.pos = (distractor_x_position, 0)
+            
         elif layout_direction == 'vertical':
             # Randomly select up or down position
             target_y_position = random.choice([7, -7])
