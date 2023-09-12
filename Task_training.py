@@ -5,6 +5,13 @@ Created on Thu Aug 17 11:01:16 2023
 @author: Marius
 """
 
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug 17 11:01:16 2023
+
+@author: Marius
+"""
+
 # %% Package imports 
 
 import os
@@ -150,7 +157,7 @@ fixation_cross = visual.TextStim(win,
 
 # Number of blocks and trials per block
 num_blocks = 10
-trials_per_block = 2
+trials_per_block = 5
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
@@ -185,12 +192,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
     core.wait(1.0)
-    
-    # Close the window if escape or space keys are pressed
-    keys = event.waitKeys(keyList=['escape'])
-    if 'escape' in keys:
-        win.close()
-
+ 
 ### Function that draws a break between blocks, shows which block they are at,
 # and takes as arguments block no, the break time between each block, and a
 # long break at every x block.
@@ -272,7 +274,8 @@ for block in range(num_blocks):
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(10, 10))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(10, 10))
-        
+             
+        # Specify the direction of the layout
         if layout_direction == 'vertical':
             target_image.pos = (0, 7)
             distractor_image.pos = (0, -7)
@@ -290,11 +293,17 @@ for block in range(num_blocks):
             distractor_y_position = -target_y_position
             target_image.pos = (0, target_y_position)
             distractor_image.pos = (0, distractor_y_position)    
-        
+             
         run_trial(win, target_image, distractor_image, layout_direction)
         
+            
         # Run block break function with a minimum of 10 seconds
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
+    # # Close the window if escape or space keys are pressed
+    # keys = event.waitKeys(keyList=['escape'])
+    # if 'escape' in keys:
+    #     win.close()
+        
 # Close the window at the end
 win.close()
