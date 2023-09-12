@@ -30,7 +30,6 @@ face_images = [filename for filename in glob.glob(os.path.join(image_directory, 
 # Get a list of vehicle image filenames that don't contain "inverted" in their names
 vehicle_images = [filename for filename in glob.glob(os.path.join(image_directory, "*vehicle*.jpg")) if "inverted" not in filename]
 
-
 # %% Subject info
 
 exp_name = 'Saccadic_choice'
@@ -151,12 +150,12 @@ fixation_cross = visual.TextStim(win,
 
 # Number of blocks and trials per block
 num_blocks = 10
-trials_per_block = 1
+trials_per_block = 2
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
 
-# Function to display target information and wait for key press
+### Function to display target information and wait for key press
 def display_target_info(win, target_text):
     # Create a visual stimulus for displaying target information
     target_info_text = visual.TextStim(win, text=target_text, color='white', height=1.5, pos=(0, 0))
@@ -167,7 +166,7 @@ def display_target_info(win, target_text):
     # Wait for a key response (space or escape)
     event.waitKeys(keyList=['space', 'escape'])
 
-# Function to run a trial
+### Function to run a trial
 def run_trial(win, target_image, distractor_image, layout_direction):
     # Generate a random fixation duration between 0.8 and 1.6 seconds
     fixation_duration = rnd.uniform(0.8, 1.6) 
@@ -186,6 +185,11 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
     core.wait(1.0)
+    
+    # Close the window if escape or space keys are pressed
+    keys = event.waitKeys(keyList=['escape'])
+    if 'escape' in keys:
+        win.close()
 
 ### Function that draws a break between blocks, shows which block they are at,
 # and takes as arguments block no, the break time between each block, and a
@@ -235,10 +239,15 @@ def block_break(block_no, totalblocks, timershort, timerlong):
 # %% Starting the experiment 
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
-condition_order = [0, 1] * (num_blocks // 2)  # Create a list of block order
+half_blocks = num_blocks // 2
+group1 = [0] * half_blocks
+group2 = [1] * half_blocks
 
-# Randomize the order of block presentation
-random.shuffle(condition_order)
+# Randomly decide the order of groups
+if random.choice([True, False]):
+    condition_order = group1 + group2
+else:
+    condition_order = group2 + group1
 
 # Loop through blocks
 for block in range(num_blocks):
@@ -286,7 +295,6 @@ for block in range(num_blocks):
         
         # Run block break function with a minimum of 10 seconds
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
-
 
 # Close the window at the end
 win.close()
