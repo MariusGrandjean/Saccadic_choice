@@ -63,10 +63,11 @@ exp_info['exp_name'] = exp_name
 
 # %% Creation of a dictonary with all the instruction
 
-instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'un part et d'autre de l'écran. \n\nVotre tâche sera de regarder le plus vite possible vers l'image qui sera définie au préalable comme cible.",
-                          'instructions.text2' : "Les cibles seront soit des visages soit des véhicules",
-                          'instructions.faces' : "Dans ce bloc, votre tâche est de regarder les VISAGES\n\n Appuyez sur la barre ESPACE pour commencer",
-                          'instructions.vehicles' : "Dans ce bloc, votre tâche est de regarder les VEHICULES\n\n Appuyez sur la barre ESPACE pour commencer",
+instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'un part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions.text2': "Votre tâche sera de regarder LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour commencer.",
+                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Appuyez sur la barre ESPACE pour commencer.",
+                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Appuyez sur la barre ESPACE pour commencer.",
                           'timertext.text':"Prêt",
                           'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur la barre 'ESPACE' pour continuer après ",
                           'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:"}
@@ -131,6 +132,17 @@ instructions = visual.TextStim(win=win,
 instructions.text = instruction_dictionary['instructions.text2']
 instructions.draw()
 
+win.flip() 
+keys = event.waitKeys(keyList=['space','escape'])
+
+# Adding other instructions
+instructions = visual.TextStim(win=win,
+    pos=[0,0], 
+    wrapWidth=None, height=1.25, font="Palatino Linotype", alignHoriz='center', color = 'white')
+
+instructions.text = instruction_dictionary['instructions.text3']
+instructions.draw()
+
 # Adding examples
 image_path1 = os.path.join(image_directory, "face_beautiful-1996283_cut_300_Norm_RGB.jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path1)
@@ -157,7 +169,7 @@ fixation_cross = visual.TextStim(win,
 
 # Number of blocks and trials per block
 num_blocks = 10
-trials_per_block = 5
+trials_per_block = 10
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
@@ -198,7 +210,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 # long break at every x block.
 def block_break(block_no, totalblocks, timershort, timerlong):
     # Determine the timer duration based on block number
-    timer = timerlong if block_no % 3 == 0 else timershort
+    timer = timerlong if block_no % 5 == 0 else timershort
     
     # Create a visual stimulus for the block's text
     blocktext = visual.TextStim(
@@ -251,6 +263,9 @@ if random.choice([True, False]):
 else:
     condition_order = group2 + group1
 
+# Initialize variables to store the previous condition_order
+prev_condition_order = None
+
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
@@ -262,7 +277,10 @@ for block in range(num_blocks):
         distractor_images = face_images
         target_text = instruction_dictionary['instructions.vehicles']
     
-    display_target_info(win, target_text)
+    # Display target_text only when condition_order changes
+    if condition_order[block] != prev_condition_order:
+        display_target_info(win, target_text)
+        prev_condition_order = condition_order[block]
     
     rnd.shuffle(target_images)
     rnd.shuffle(distractor_images)
@@ -277,26 +295,21 @@ for block in range(num_blocks):
              
         # Specify the direction of the layout
         if layout_direction == 'vertical':
-            target_image.pos = (0, 7)
-            distractor_image.pos = (0, -7)
+            # Randomly select up or down position
+            target_y_position = random.choice([7, -7])
+            distractor_y_position = -target_y_position
+            target_image.pos = (0, target_y_position)
+            distractor_image.pos = (0, distractor_y_position) 
             
-        if layout_direction == 'horizontal':
+        elif layout_direction == 'horizontal':
             # Randomly select left or right position
             target_x_position = random.choice([-10, 10])
             distractor_x_position = -target_x_position
             target_image.pos = (target_x_position, 0)
             distractor_image.pos = (distractor_x_position, 0)
-            
-        elif layout_direction == 'vertical':
-            # Randomly select up or down position
-            target_y_position = random.choice([7, -7])
-            distractor_y_position = -target_y_position
-            target_image.pos = (0, target_y_position)
-            distractor_image.pos = (0, distractor_y_position)    
-             
+                            
         run_trial(win, target_image, distractor_image, layout_direction)
         
-            
         # Run block break function with a minimum of 10 seconds
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
