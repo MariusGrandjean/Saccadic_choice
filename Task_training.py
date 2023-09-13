@@ -47,8 +47,8 @@ exp_info = {
         'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
         'screenwidth(cm)': '49',
-        'screenresolutionhori(pixels)': '1920',
-        'screenresolutionvert(pixels)': '1080',
+        'screenresolution_hori(pixels)': '1920',
+        'screenresolution_vert(pixels)': '1080',
         'refreshrate(hz)': '120'}
 
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)
@@ -77,8 +77,8 @@ instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez v
 mon = monitors.Monitor('OLED...') #Pulls out photometer calibration settings by name.  
 mon.setWidth(float(exp_info['screenwidth(cm)'])) # Cm width
 mon.setDistance(57)
-horipix = exp_info['screenresolutionhori(pixels)']
-vertpix = exp_info['screenresolutionvert(pixels)']
+horipix = exp_info['screenresolution_hori(pixels)']
+vertpix = exp_info['screenresolution_vert(pixels)']
 framerate = exp_info['refreshrate(hz)']
 scrsize = (float(horipix),float(vertpix))
 framelength = 1000/(float(framerate))
@@ -187,6 +187,12 @@ def display_target_info(win, target_text):
 
 ### Function to run a trial
 def run_trial(win, target_image, distractor_image, layout_direction):
+    
+    # Quit the experiment is escape is pressed
+    keys = event.getKeys()
+    if 'escape' in keys:
+        win.close() 
+    
     # Generate a random fixation duration between 0.8 and 1.6 seconds
     fixation_duration = rnd.uniform(0.8, 1.6) 
     fixation_cross.draw() # Display the fixation cross
@@ -204,11 +210,12 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
     core.wait(1.0)
- 
+
 ### Function that draws a break between blocks, shows which block they are at,
 # and takes as arguments block no, the break time between each block, and a
 # long break at every x block.
 def block_break(block_no, totalblocks, timershort, timerlong):
+    
     # Determine the timer duration based on block number
     timer = timerlong if block_no % 5 == 0 else timershort
     
@@ -219,7 +226,12 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         font="Palatino Linotype",
         alignHoriz='center')
     
-    blocktext.text = instruction_dictionary['blocktext1.text'] + str(timer) + instruction_dictionary['blocktext2.text'] + str(block_no) + "/" + str(totalblocks)
+    blocktext.text = instruction_dictionary['blocktext1.text'] 
+    + str(timer) 
+    + instruction_dictionary['blocktext2.text'] 
+    + str(block_no) 
+    + "/" 
+    + str(totalblocks)
     
     # Create a visual stimulus for the timer text
     timertext = visual.TextStim(
@@ -314,9 +326,8 @@ for block in range(num_blocks):
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
     # # Close the window if escape or space keys are pressed
-    # keys = event.waitKeys(keyList=['escape'])
-    # if 'escape' in keys:
-    #     win.close()
+    if 'escape' in keys:
+        win.close()
         
 # Close the window at the end
 win.close()
