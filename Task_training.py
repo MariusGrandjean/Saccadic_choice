@@ -15,7 +15,6 @@ Created on Thu Aug 17 11:01:16 2023
 # %% Package imports 
 
 import os
-import numpy as np
 import numpy.random as rnd
 from PIL import Image
 import random
