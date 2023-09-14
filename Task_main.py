@@ -140,7 +140,11 @@ instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez v
 # Set the Host PC address to "None" (without quotes) to run the script
 # in "Dummy Mode"
 # Set this variable to True to run the script in "Dummy Mode"
-dummy_mode = framerate = exp_info['dummy_mode']
+
+if exp_info['dummy_mode'] == 'FALSE' :
+   dummy_mode = False
+else :
+   dummy_mode = True
 
 if dummy_mode:
     el_tracker = pylink.EyeLink(None)
