@@ -12,7 +12,6 @@ from __future__ import print_function
 import pylink
 from math import atan2, degrees
 import os
-import platform
 import time
 import sys
 import numpy.random as rnd
@@ -234,7 +233,7 @@ win = visual.Window(monitor = mon,
                     colorSpace = "rgb255",
                     color= [128-reduce, 128-reduce, 128-reduce],
                     units='pix',
-                    fullscr=False,
+                    fullscr=True,
                     allowStencil=True,
                     screen=1)
 # Hide the cursor when the window is opened
