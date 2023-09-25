@@ -81,26 +81,17 @@ if not os.path.exists(session_folder):
     os.makedirs(session_folder)
 
 # %% Image Paths
-## For the entire folder
-# face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/STIMULI/*face*.jpg")
-# vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/STIMULI/*vehicle*.jpg")
+
+image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts"
+face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts/*faces*.jpg")
+vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts/*vehicule*.jpg")
   
-## Only for upright images
-# Define image directory path
-image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/STIMULI"
-
-# Get a list of face image filenames that don't contain "inverted" in their names
-face_images = [filename for filename in glob.glob(os.path.join(image_directory, "*face*.jpg")) if "inverted" not in filename]
-
-# Get a list of vehicle image filenames that don't contain "inverted" in their names
-vehicle_images = [filename for filename in glob.glob(os.path.join(image_directory, "*vehicle*.jpg")) if "inverted" not in filename]
-
-
 # %% Subject info
 
 exp_name = 'Saccadic_choice'
 exp_info = {
-        'dummy_mode':('TRUE', 'FALSE'),
+        'pratice':('FALSE', 'TRUE'),
+        'dummy_mode':('FALSE', 'TRUE'),
         'participant': '',
         'gender': ('male', 'female'),
         'age':'',
@@ -125,21 +116,18 @@ exp_info['exp_name'] = exp_name
 # %% Creation of a dictonary with all the instruction
 
 instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'un part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
-                          'instructions.text2': "Votre tâche sera de regarder LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions.text2': "Votre tâche sera d'orienter votre regard LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
                           'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour commencer.",
-                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Appuyez sur la barre ESPACE pour commencer.",
-                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Appuyez sur la barre ESPACE pour commencer.",
+                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien la croix au centre entre les essais. \n\nAppuyez sur ESPACE pour commencer.",
+                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien la croix au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
                           'timertext.text':"Prêt",
-                          'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur la barre 'ESPACE' pour continuer après ",
-                          'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:"}
+                          'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur ESPACE pour continuer après ",
+                          'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:",
+                          'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESPACE pour arrêter un essai. \n\n Appuyez sur ESCAPE pour arrêter la tâche prématurément. \n",
+                          'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'étude.",
+                          'calibration.text3': "\n Maintenant, appuyez sur ENTER trois fois pour calibrer l'eyetracker."}
 
-# Connect to the EyeLink Host PC
-#
-# The Host IP address, by default, is "100.1.1.1".
-# the "el_tracker" objected created here can be accessed through the Pylink
-# Set the Host PC address to "None" (without quotes) to run the script
-# in "Dummy Mode"
-# Set this variable to True to run the script in "Dummy Mode"
+# %% Connect to the EyeLink Host PC
 
 if exp_info['dummy_mode'] == 'FALSE' :
    dummy_mode = False
@@ -177,7 +165,7 @@ preamble_text = 'RECORDED BY %s' % os.path.basename(__file__)
 el_tracker.sendCommand("add_file_preamble_text '%s'" % preamble_text)
 
 # Configure the tracker
-#
+
 # Put the tracker in offline mode before we change tracking parameters
 el_tracker.setOfflineMode()
 
@@ -210,9 +198,6 @@ el_tracker.sendCommand("link_event_filter = %s" % link_event_flags)
 el_tracker.sendCommand("link_sample_data = %s" % link_sample_flags)
 
 # Optional tracking parameters
-# Sample rate, 250, 500, 1000, or 2000, check your tracker specification
-# if eyelink_ver > 2:
-#     el_tracker.sendCommand("sample_rate 1000")
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 el_tracker.sendCommand("calibration_type = HV9")
 # Set a gamepad button to accept calibration/drift check target
@@ -280,24 +265,13 @@ background_color = win.color
 genv.setCalibrationColors(foreground_color, background_color)
 
 # Set up the calibration target
-#
-# The target could be a "circle" (default), a "picture", a "movie" clip,
-# or a rotating "spiral". To configure the type of calibration target, set
-# genv.setTargetType to "circle", "picture", "movie", or "spiral", e.g.,
-# genv.setTargetType('picture')
-#
-# Use gen.setPictureTarget() to set a "picture" target
-# genv.setPictureTarget(os.path.join('images', 'fixTarget.bmp'))
-#
-# Use genv.setMovieTarget() to set a "movie" target
-# genv.setMovieTarget(os.path.join('videos', 'calibVid.mov'))
 
-# Classic calibration target
+# The target could be a "circle" (default), a "picture", a "movie" clip, or a rotating "spiral". 
 genv.setTargetType('circle')
 
 # Configure the size of the calibration target (in pixels)
 # this option applies only to "circle" and "spiral" targets
-# genv.setTargetSize(24)
+genv.setTargetSize(24)
 
 # Beeps to play during calibration, validation and drift correction
 # parameters: target, good, error
@@ -324,7 +298,7 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height=1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text2']
 instructions.draw()
@@ -335,18 +309,18 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height=1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text3']
 instructions.draw()
 
 # Adding examples
-image_path1 = os.path.join(image_directory, "face_beautiful-1996283_cut_300_Norm_RGB.jpg")  # Replace with your image path
+image_path1 = os.path.join(image_directory, "faces (41).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path1)
 image_stim = visual.ImageStim(win, image=bitmap_im, pos=[-13/deg_per_px, 0], size=6/deg_per_px)
 image_stim.draw()
 
-image_path2 = os.path.join(image_directory, "vehicle_volkswagen-569315_1920_cut_300_Norm_RGB.jpg")  # Replace with your image path
+image_path2 = os.path.join(image_directory, "vehicule (191).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path2)
 image_stim = visual.ImageStim(win, image=bitmap_im, pos=[13/deg_per_px, 0], size=6/deg_per_px)
 image_stim.draw()
@@ -365,14 +339,18 @@ fixation_cross = visual.TextStim(win,
                                  bold=False)
 
 # Number of blocks and trials per block
-num_blocks = 10
-trials_per_block = 1
+num_blocks = 4
+trials_per_block = 50
+
+# Number of blocks and trials for practice
+prac_blocks = 2
+prac_trials_per_block = 10
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
 
 #### Homemade functions
-###Function to display target information and wait for key press
+### Function to display target information and wait for key press
 def display_target_info(win, target_text):
     # Create a visual stimulus for displaying target information
     target_info_text = visual.TextStim(win, text=target_text, color='white', height=1.5/deg_per_px,wrapWidth=horipix/2,pos=(0, 0))
@@ -405,29 +383,25 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
 
     # drift check
-    # we recommend drift-check at the beginning of each trial
-    # the doDriftCorrect() function requires target position in integers
-    # the last two arguments:
-    # draw_target (1-default, 0-draw the target then call doDriftCorrect)
-    # allow_setup (1-press ESCAPE to recalibrate, 0-not allowed)
-    #
-    # Skip drift-check if running the script in Dummy Mode
-    while not dummy_mode:
-        # terminate the task if no longer connected to the tracker or
-        # user pressed Ctrl-C to terminate the task
-        if (not el_tracker.isConnected()) or el_tracker.breakPressed():
-            terminate_task()
-            return pylink.ABORT_EXPT
+    # Perform drift check every 10 trials
+    if trial_index % 10 == 0:
+        # Skip drift-check if running the script in Dummy Mode
+        while not dummy_mode:
+            # terminate the task if no longer connected to the tracker or
+            # user pressed Ctrl-C to terminate the task
+            if (not el_tracker.isConnected()) or el_tracker.breakPressed():
+                terminate_task()
+                return pylink.ABORT_EXPT
 
-        # drift-check and re-do camera setup if ESCAPE is pressed
-        try:
-            error = el_tracker.doDriftCorrect(int(horipix/2.0),
-                                              int(vertpix/2.0), 1, 1)
-            # break following a success drift-check
-            if error is not pylink.ESC_KEY:
-                break
-        except:
-            pass
+            # drift-check and re-do camera setup if ESCAPE is pressed
+            try:
+                error = el_tracker.doDriftCorrect(int(horipix/2.0),
+                                                  int(vertpix/2.0), 1, 1)
+                # break following a success drift-check
+                if error is not pylink.ESC_KEY:
+                    break
+            except:
+                pass
 
     # put tracker in idle/offline mode before recording
     el_tracker.setOfflineMode()
@@ -457,27 +431,31 @@ def run_trial(win, target_image, distractor_image, layout_direction):
         print("Error in getting the eye information!")
         return pylink.TRIAL_ERROR
     
-    # Generate a random fixation duration between 0.8 and 1.6 seconds
+    ## Beginning of the actual experiment 
+    # 1. Generate a random fixation duration between 0.8 and 1.6 seconds
     fixation_duration = rnd.uniform(0.8, 1.6) 
     fixation_cross.draw() # Display the fixation cross
     win.flip()
-    el_tracker.sendMessage('fixation_onset')
+    el_tracker.sendMessage('FIXATION_DISPLAY')
     core.wait(fixation_duration) # Wait for the fixation duration to pass
-    # Clear the window and wait for a brief period (0.2 seconds)
+    
+    # 2. Clear the window and wait for a brief period (0.2 seconds)
     win.flip()
-    el_tracker.sendMessage('blank_onset')
+    el_tracker.sendMessage('GAP_DISPLAY')
     core.wait(0.2)
-    # Draw and display the target and distractor images
+    
+    # 3. Draw and display the target and distractor images for 0.4 seconds
     target_image.draw()
     distractor_image.draw()
     win.flip()
-    el_tracker.sendMessage('image_onset')
-    # Wait for 0.4 seconds to display the images
+    el_tracker.sendMessage('TARGET_DISPLAY')
     core.wait(0.4)
-    # Clear the window and wait for 1.0 second (end of the trial)
+    
+    # 4. Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
-    el_tracker.sendMessage('ISI_onset')
+    el_tracker.sendMessage('TARGET_END')
     core.wait(1.0)
+    el_tracker.sendMessage('ISI_END')
     
     # stop recording; add 100 msec to catch final events before stopping
     pylink.pumpDelay(100)
@@ -485,12 +463,11 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 
     # record trial variables to the EDF data file, for details, see Data
     # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-    #el_tracker.sendMessage('!V TRIAL_VAR condition %s' % cond)
-    #el_tracker.sendMessage('!V TRIAL_VAR image %s' % pic)
+    # el_tracker.sendMessage('!V TRIAL_VAR condition %s' % cond)
+    # el_tracker.sendMessage('!V TRIAL_VAR image %s' % pic)
     # el_tracker.sendMessage('!V TRIAL_VAR RT %d' % RT)
 
-    # send a 'TRIAL_RESULT' message to mark the end of trial, see Data
-    # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
+    # send a 'TRIAL_RESULT' message to mark the end of trial
     el_tracker.sendMessage('TRIAL_RESULT %d' % pylink.TRIAL_OK)
     
 ### Function that draws a break between blocks, shows which block they are at,
@@ -638,12 +615,12 @@ def abort_trial():
 # %% Starting the experiment 
 
 # Set up the camera and calibrate the tracker
-task_msg = 'In the task, you may press the SPACEBAR to end a trial\n' + \
-    '\nPress Ctrl-C to if you need to quit the task early\n'
+task_msg = instruction_dictionary['calibration.text1']
+
 if dummy_mode:
-    task_msg = task_msg + '\nNow, press ENTER to start the task'
+    task_msg = task_msg + instruction_dictionary['calibration.text2']
 else:
-    task_msg = task_msg + '\nNow, press ENTER twice to calibrate tracker'
+    task_msg = task_msg + instruction_dictionary['calibration.text3']
 show_msg(win, task_msg)
 
 # skip this step if running the script in Dummy Mode
@@ -684,6 +661,14 @@ for block in range(num_blocks):
         display_target_info(win, target_text)
         prev_condition_order = condition_order[block]
     
+    # Perform calibration after each block except the last one
+    if not dummy_mode and block < num_blocks - 1:
+        try:
+            el_tracker.doTrackerSetup()
+        except RuntimeError as err:
+            print('ERROR:', err)
+            el_tracker.exitCalibration()
+
     rnd.shuffle(target_images)
     rnd.shuffle(distractor_images)
 
@@ -713,11 +698,13 @@ for block in range(num_blocks):
                
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
-        # Run block break function with a minimum of 10 seconds
-    block_break(block + 1, num_blocks, 1, 3)  # Adjust the timer values as needed
+    
+    # Run block break function with a minimum of 10 seconds
+    block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
     # Close the window if escape or space keys are pressed
     if 'escape' in keys:
         win.close()
+    
 # Disconnect, download the EDF file, then terminate the task
 terminate_task()
