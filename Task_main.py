@@ -89,7 +89,6 @@ vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Proje
 
 exp_name = 'Saccadic_choice'
 exp_info = {
-        'pratice':('FALSE', 'TRUE'),
         'dummy_mode':('FALSE', 'TRUE'),
         'participant': '',
         'gender': ('male', 'female'),
@@ -114,10 +113,12 @@ exp_info['exp_name'] = exp_name
 
 # %% Creation of a dictonary with all the instruction
 
-instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'un part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'une part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
                           'instructions.text2': "Votre tâche sera d'orienter votre regard LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
-                          'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour commencer.",
-                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien la croix au centre entre les essais. \n\nAppuyez sur ESPACE pour commencer.",
+                          'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions.text4' : "Nous allons d'abord commencer par un entrainement. \n\n Appuyez sur ESPACE pour commencer.",
+                          'instructions.text5' : "Bravo!\nVous avez terminé l'entrainement.\nVous allez maintenant commencer l'étude.\n\nAppuyez sur ESPACE pour commencer l'étude",
+                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien la croix au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
                           'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien la croix au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
                           'timertext.text':"Prêt",
                           'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur ESPACE pour continuer après ",
@@ -327,6 +328,16 @@ image_stim.draw()
 win.flip() 
 keys = event.waitKeys(keyList=['space','escape'])
 
+# Addig other instructions
+instructions = visual.TextStim(win=win,
+    pos=[0,0], 
+    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+
+instructions.text = instruction_dictionary['instructions.text4']
+instructions.draw()
+
+win.flip() 
+keys = event.waitKeys(keyList=['space','escape'])
 # %% Preparing the experiment
 
 # Define fixation cross
@@ -337,22 +348,23 @@ fixation_cross = visual.TextStim(win,
                                  font="Palatino Linotype", 
                                  bold=False)
 
-# Number of blocks and trials per block
-num_blocks = 4
-trials_per_block = 50
-
 # Number of blocks and trials for practice
 prac_blocks = 2
 prac_trials_per_block = 10
 
+# Number of blocks and trials per block
+num_blocks = 4
+trials_per_block = 50
+
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
 
-#### Homemade functions
+# %% Homemade functions
+
 ### Function to display target information and wait for key press
 def display_target_info(win, target_text):
     # Create a visual stimulus for displaying target information
-    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1.5/deg_per_px,wrapWidth=horipix/2,pos=(0, 0))
+    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1/deg_per_px,wrapWidth=horipix/2,pos=(0, 0))
     # Draw the target information on the window
     target_info_text.draw()
     # Display the window with the target information
@@ -517,7 +529,8 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         win.close()
     win.flip()
 
-#### Pylink functions
+# %% Pylink functions
+
 ### Function to clear the screen
 def clear_screen(win):
     """ clear up the PsychoPy window"""
@@ -613,7 +626,7 @@ def abort_trial():
     el_tracker.sendMessage('TRIAL_RESULT %d' % pylink.TRIAL_ERROR)
 
     return pylink.TRIAL_ERROR    
-# %% Starting the experiment 
+# %% Start calibration
 
 # Set up the camera and calibrate the tracker
 task_msg = instruction_dictionary['calibration.text1']
@@ -631,6 +644,86 @@ if not dummy_mode:
     except RuntimeError as err:
         print('ERROR:', err)
         el_tracker.exitCalibration()
+
+# %% Practice loop
+
+# Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
+half_pracblocks = prac_blocks // 2
+group1 = [0] * half_pracblocks
+group2 = [1] * half_pracblocks
+
+# Randomly decide the order of groups
+if random.choice([True, False]):
+    condition_order = group1 + group2
+else:
+    condition_order = group2 + group1
+
+# Initialize variables to store the previous condition_order
+prev_condition_order = None
+
+# Loop through blocks
+for block in range(prac_blocks):
+    if condition_order[block] == 0:
+        target_images = face_images
+        distractor_images = vehicle_images
+        target_text = instruction_dictionary['instructions.faces']
+    else:
+        target_images = vehicle_images
+        distractor_images = face_images
+        target_text = instruction_dictionary['instructions.vehicles']
+    
+    # Display target_text only when condition_order changes
+    if condition_order[block] != prev_condition_order:
+        display_target_info(win, target_text)
+        prev_condition_order = condition_order[block]
+    
+    rnd.shuffle(target_images)
+    rnd.shuffle(distractor_images)
+
+    # Loop through trials within each block
+    trial_index = 1
+    for trial in range(prac_trials_per_block):
+        target_image_path = target_images[trial]
+        distractor_image_path = distractor_images[trial]
+        
+        target_image = visual.ImageStim(win, image=target_image_path, size=(10/deg_per_px, 10/deg_per_px))
+        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(10/deg_per_px, 10/deg_per_px))
+        
+        # Specify the direction of the layout
+        if layout_direction == 'vertical':
+            # Randomly select up or down position
+            target_y_position = random.choice([7/deg_per_px, -7/deg_per_px])
+            distractor_y_position = -target_y_position
+            target_image.pos = (0, target_y_position)
+            distractor_image.pos = (0, distractor_y_position) 
+            
+        elif layout_direction == 'horizontal':
+            # Randomly select left or right position
+            target_x_position = random.choice([-10/deg_per_px, 10/deg_per_px])
+            distractor_x_position = -target_x_position
+            target_image.pos = (target_x_position, 0)
+            distractor_image.pos = (distractor_x_position, 0)
+               
+        run_trial(win, target_image, distractor_image, layout_direction)
+        trial_index += 1
+        
+        # Close the window if escape or space keys are pressed
+        if 'escape' in keys:
+            win.close()
+
+# Adding further instructions
+instructions = visual.TextStim(win=win,
+    pos=[0,0], 
+    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+
+
+instructions.text = instruction_dictionary['instructions.text5']
+instructions.draw()
+
+win.flip()
+keys = event.waitKeys(keyList=['space','escape'])#core.wait(.1)
+
+# %% Experimental loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
 half_blocks = num_blocks // 2
