@@ -393,8 +393,29 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     status_msg = 'TRIAL number %d' % trial_index
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
 
-    # drift check
-    # Perform drift check every 10 trials
+    # # drift check
+    # # Perform drift check every 10 trials
+    # if trial_index % 10 == 0 and trial_index != 50 :
+    #     # Skip drift-check if running the script in Dummy Mode
+    #     while not dummy_mode:
+    #         # terminate the task if no longer connected to the tracker or
+    #         # user pressed Ctrl-C to terminate the task
+    #         if (not el_tracker.isConnected()) or el_tracker.breakPressed():
+    #             terminate_task()
+    #             return pylink.ABORT_EXPT
+
+    #         # drift-check and re-do camera setup if ESCAPE is pressed
+    #         try:
+    #             error = el_tracker.doDriftCorrect(int(horipix/2.0),
+    #                                               int(vertpix/2.0), 1, 1)
+    #             # break following a success drift-check
+    #             if error is not pylink.ESC_KEY:
+    #                 break
+    #         except:
+    #             pass
+    
+    # drift correction
+    # Perform drift correction every 10 trials
     if trial_index % 10 == 0 and trial_index != 50 :
         # Skip drift-check if running the script in Dummy Mode
         while not dummy_mode:
@@ -404,15 +425,16 @@ def run_trial(win, target_image, distractor_image, layout_direction):
                 terminate_task()
                 return pylink.ABORT_EXPT
 
-            # drift-check and re-do camera setup if ESCAPE is pressed
+            # drift-correction and re-do camera setup if ESCAPE is pressed
             try:
-                error = el_tracker.doDriftCorrect(int(horipix/2.0),
-                                                  int(vertpix/2.0), 1, 1)
-                # break following a success drift-check
-                if error is not pylink.ESC_KEY:
-                    break
+                error = pylink.getEYELINK().doDriftCorrect(int(horipix/2.0),
+                                                           int(vertpix/2.0), 1, 0) #0 if successful
+                if error != 27: #27 = escape key pressed at tracker to enter tracker setup menu
+                    return
+                else:
+                    pylink.getEYELINK().doTrackerSetup() #switches the EyeLink tracker to the setup menu
             except:
-                pass
+                pylink.getEYELINK().doTrackerSetup()
 
     # put tracker in idle/offline mode before recording
     el_tracker.setOfflineMode()
