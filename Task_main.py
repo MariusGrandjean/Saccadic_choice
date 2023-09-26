@@ -383,7 +383,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 
     # drift check
     # Perform drift check every 10 trials
-    if trial_index % 10 == 0:
+    if trial_index % 10 == 0 and trial_index != 50 :
         # Skip drift-check if running the script in Dummy Mode
         while not dummy_mode:
             # terminate the task if no longer connected to the tracker or
@@ -473,6 +473,8 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 # and takes as arguments block no, the break time between each block, and a
 # long break at every x block.
 def block_break(block_no, totalblocks, timershort, timerlong):
+    if block_no == totalblocks:
+        return
     # Determine the timer duration based on block number
     timer = timerlong if block_no % half_blocks == 0 else timershort
     
@@ -661,7 +663,7 @@ for block in range(num_blocks):
         prev_condition_order = condition_order[block]
     
     # Perform calibration after each block except the last one
-    if not dummy_mode and block < num_blocks - 1:
+    if not dummy_mode and block < num_blocks:
         try:
             el_tracker.doTrackerSetup()
         except RuntimeError as err:
