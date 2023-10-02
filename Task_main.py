@@ -81,9 +81,9 @@ if not os.path.exists(session_folder):
 
 # %% Image Paths
 
-image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts"
-face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts/*faces*.jpg")
-vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/Stimuli_bruts/*vehicule*.jpg")
+image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final"
+face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*faces*.jpg")
+vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
   
 # %% Subject info
 
@@ -232,7 +232,7 @@ cdm2 = (128-reduce)/255*100
 win = visual.Window(monitor = mon, 
                     size = scrsize,
                     colorSpace = "rgb255",
-                    color= [128-reduce, 128-reduce, 128-reduce],
+                    color= [128 - reduce, 128 - reduce, 128 - reduce],
                     units='pix',
                     fullscr=True,
                     allowStencil=True,
@@ -667,6 +667,16 @@ if not dummy_mode:
         print('ERROR:', err)
         el_tracker.exitCalibration()
 
+# %% Assignment of images for both the practice and the main experiment
+
+# Randomly select 10 images per category for practice
+practice_face_images = random.sample(face_images, 10)
+practice_vehicle_images = random.sample(vehicle_images, 10)
+
+# Assign the rest of the images for the main experiment
+main_face_images = [img for img in face_images if img not in practice_face_images]
+main_vehicle_images = [img for img in vehicle_images if img not in practice_vehicle_images]
+
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -686,12 +696,12 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(prac_blocks):
     if condition_order[block] == 0:
-        target_images = face_images
-        distractor_images = vehicle_images
+        target_images = practice_face_images
+        distractor_images = practice_vehicle_images
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = vehicle_images
-        distractor_images = face_images
+        target_images = practice_vehicle_images
+        distractor_images = practice_face_images
         target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
@@ -764,12 +774,12 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
-        target_images = face_images
-        distractor_images = vehicle_images
+        target_images = main_face_images
+        distractor_images = main_vehicle_images
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = vehicle_images
-        distractor_images = face_images
+        target_images = main_vehicle_images
+        distractor_images = main_face_images
         target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
@@ -794,8 +804,8 @@ for block in range(num_blocks):
         target_image_path = target_images[trial]
         distractor_image_path = distractor_images[trial]
         
-        target_image = visual.ImageStim(win, image=target_image_path, size=(10/deg_per_px, 10/deg_per_px))
-        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(10/deg_per_px, 10/deg_per_px))
+        target_image = visual.ImageStim(win, image=target_image_path, size=(7/deg_per_px, 7/deg_per_px))
+        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(7/deg_per_px, 7/deg_per_px))
         
         # Specify the direction of the layout
         if layout_direction == 'vertical':
@@ -807,7 +817,7 @@ for block in range(num_blocks):
             
         elif layout_direction == 'horizontal':
             # Randomly select left or right position
-            target_x_position = random.choice([-10/deg_per_px, 10/deg_per_px])
+            target_x_position = random.choice([-7/deg_per_px, 7/deg_per_px])
             distractor_x_position = -target_x_position
             target_image.pos = (target_x_position, 0)
             distractor_image.pos = (distractor_x_position, 0)
