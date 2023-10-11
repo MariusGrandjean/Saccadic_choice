@@ -14,6 +14,7 @@ from math import atan2, degrees
 import os
 import time
 import sys
+import math
 import numpy.random as rnd
 from PIL import Image
 import random
@@ -95,6 +96,7 @@ exp_info = {
         'age':'',
         'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
+        'desired_visual_angle' : '11',
         'screenwidth(cm)': '49',
         'screendistance(cm)': '57',
         'screenresolutionhori(pixels)': '1920',
@@ -123,8 +125,8 @@ instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez v
                           'timertext.text':"Prêt",
                           'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur ESPACE pour continuer après ",
                           'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:",
-                          'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESPACE pour arrêter un essai. \n\n Appuyez sur ESCAPE pour arrêter la tâche prématurément. \n",
-                          'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'étude.",
+                          'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESCAPE pour arrêter la tâche prématurément.\n",
+                          'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'entrainement.",
                           'calibration.text3': "\n Maintenant, appuyez sur ENTER trois fois pour calibrer l'eyetracker."}
 
 # %% Connect to the EyeLink Host PC
@@ -287,7 +289,7 @@ pylink.openGraphicsEx(genv)
 # %% Display instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height=1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height=1/deg_per_px, alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text']
 instructions.draw()
@@ -298,7 +300,7 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text2']
 instructions.draw()
@@ -309,7 +311,7 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text3']
 instructions.draw()
@@ -331,7 +333,7 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Addig other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
 
 instructions.text = instruction_dictionary['instructions.text4']
 instructions.draw()
@@ -340,13 +342,11 @@ win.flip()
 keys = event.waitKeys(keyList=['space','escape'])
 # %% Preparing the experiment
 
-# Define fixation cross
-fixation_cross = visual.TextStim(win, 
-                                 text='+', 
-                                 color='white', 
-                                 height=2/deg_per_px,
-                                 font="Palatino Linotype", 
-                                 bold=False)
+fixation_cross = visual.Circle(win, 
+                             fillColor='white',
+                             lineColor='white',
+                             radius=0.5/deg_per_px,  
+                             pos=(0, 0))
 
 # Number of blocks and trials for practice
 prac_blocks = 2
@@ -517,7 +517,6 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         win=win,
         height=1/deg_per_px,
         wrapWidth=horipix/2,
-        font="Palatino Linotype",
         alignHoriz='center')
     
     blocktext.text = instruction_dictionary['blocktext1.text'] + str(timer) + instruction_dictionary['blocktext2.text'] + str(block_no) + "/" + str(totalblocks)
@@ -527,7 +526,6 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         win=win,
         height=1/deg_per_px,
         pos=[0, -6/deg_per_px],
-        font="Palatino Linotype",
         alignHoriz='center',
         text=instruction_dictionary['timertext.text'])
     
@@ -568,7 +566,6 @@ def show_msg(win, text, wait_for_keypress=True):
                           color= 'white',
                           height=1/deg_per_px,
                           wrapWidth=horipix/2,
-                          font="Palatino Linotype",
                           alignHoriz='center')
     clear_screen(win)
     msg.draw()
@@ -648,6 +645,32 @@ def abort_trial():
     el_tracker.sendMessage('TRIAL_RESULT %d' % pylink.TRIAL_ERROR)
 
     return pylink.TRIAL_ERROR    
+
+# %% Calculation of image_size
+
+# Constants for the calculation
+d = float(exp_info['screendistance(cm)'])  # eye-screen distance in cm
+dd = 2 * d  # 2*d
+pixelPitch = 0.315  # pixel size in mm (to change depending on your screen)
+screenWidthPix = float(exp_info['screenresolutionhori(pixels)'])  # screen width in pixels
+screenHeightPix = float(exp_info['screenresolutionvert(pixels)']) # screen height in pixels
+
+# Calculate screen width and height in cm
+screenWidthCm = pixelPitch * screenWidthPix / 10  # screen width in cm
+screenHeightCm = pixelPitch * screenHeightPix / 10  # screen height in cm
+
+# Desired angular size (width and height) in degrees
+alphaW = float(exp_info['desired_visual_angle'])
+alphaH = float(exp_info['desired_visual_angle'])
+
+# Calculate image width and height in cm for the desired angular size
+real_hori = dd * math.tan(math.radians(alphaW / 2))  # image width in cm = 2dtan(alpha/2)
+real_vert = dd * math.tan(math.radians(alphaH / 2))  # image height in cm = 2dtan(alpha/2)
+
+# Calculate image width and height in pixels for the desired size
+real_hori_pix = round(real_hori * screenWidthPix / screenWidthCm)  # image width in pixels
+real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image height in pixels
+
 # %% Start calibration
 
 # Set up the camera and calibrate the tracker
@@ -718,23 +741,19 @@ for block in range(prac_blocks):
         target_image_path = target_images[trial]
         distractor_image_path = distractor_images[trial]
         
-        target_image = visual.ImageStim(win, image=target_image_path, size=(10/deg_per_px, 10/deg_per_px))
-        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(10/deg_per_px, 10/deg_per_px))
+        target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
+        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
         
         # Specify the direction of the layout
         if layout_direction == 'vertical':
-            # Randomly select up or down position
-            target_y_position = random.choice([7/deg_per_px, -7/deg_per_px])
-            distractor_y_position = -target_y_position
-            target_image.pos = (0, target_y_position)
-            distractor_image.pos = (0, distractor_y_position) 
+            position = random.choice([(0, 15/deg_per_px), (0, -15/deg_per_px)])
             
         elif layout_direction == 'horizontal':
-            # Randomly select left or right position
-            target_x_position = random.choice([-10/deg_per_px, 10/deg_per_px])
-            distractor_x_position = -target_x_position
-            target_image.pos = (target_x_position, 0)
-            distractor_image.pos = (distractor_x_position, 0)
+            position = random.choice([(15/deg_per_px, 0), (-15/deg_per_px, 0)])
+    
+        target_image.pos = position
+        distractor_image.pos = (-position[0], -position[1])  # Opposite position
+
                
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
@@ -746,7 +765,7 @@ for block in range(prac_blocks):
 # Adding further instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1.25/deg_per_px, font="Palatino Linotype", alignHoriz='center', color = 'white')
+    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
 
 
 instructions.text = instruction_dictionary['instructions.text5']
@@ -804,33 +823,28 @@ for block in range(num_blocks):
         target_image_path = target_images[trial]
         distractor_image_path = distractor_images[trial]
         
-        target_image = visual.ImageStim(win, image=target_image_path, size=(7/deg_per_px, 7/deg_per_px))
-        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(7/deg_per_px, 7/deg_per_px))
-        
+        target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
+        distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
+               
         # Specify the direction of the layout
         if layout_direction == 'vertical':
-            # Randomly select up or down position
-            target_y_position = random.choice([7/deg_per_px, -7/deg_per_px])
-            distractor_y_position = -target_y_position
-            target_image.pos = (0, target_y_position)
-            distractor_image.pos = (0, distractor_y_position) 
+            position = random.choice([(0, 15/deg_per_px), (0, -15/deg_per_px)])
             
         elif layout_direction == 'horizontal':
-            # Randomly select left or right position
-            target_x_position = random.choice([-7/deg_per_px, 7/deg_per_px])
-            distractor_x_position = -target_x_position
-            target_image.pos = (target_x_position, 0)
-            distractor_image.pos = (distractor_x_position, 0)
+            position = random.choice([(15/deg_per_px, 0), (-15/deg_per_px, 0)])
+    
+        target_image.pos = position
+        distractor_image.pos = (-position[0], -position[1])  # Opposite position
                
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
     
-    # Run block break function with a minimum of 10 seconds
-    block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
-
     # Close the window if escape or space keys are pressed
     if 'escape' in keys:
         win.close()
     
+    # Run block break function with a minimum of 10 seconds
+    block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
+
 # Disconnect, download the EDF file, then terminate the task
 terminate_task()
