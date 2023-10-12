@@ -40,6 +40,9 @@ while True:
     dlg = gui.Dlg(dlg_title)
     dlg.addText(dlg_prompt)
     dlg.addField('File Name:', edf_fname)
+    dlg.addField('Right/left handed?', choices=['left','right'])
+    dlg.addField('Gender', choices=['male','female'])
+    dlg.addField('Age:','')
     # show dialog and wait for OK or Cancel
     ok_data = dlg.show()
     if dlg.OK:  # if ok_data is not None
@@ -91,10 +94,10 @@ vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Proje
 exp_name = 'Saccadic_choice'
 exp_info = {
         'dummy_mode':('FALSE', 'TRUE'),
-        'participant': '',
-        'gender': ('male', 'female'),
-        'age':'',
-        'left-handed':False,
+        # 'participant': '',
+        # 'gender': ('male', 'female'),
+        # 'age':'',
+        # 'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
         'desired_visual_angle' : '11',
         'screenwidth(cm)': '49',
@@ -289,7 +292,10 @@ pylink.openGraphicsEx(genv)
 # %% Display instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height=1/deg_per_px, alignHoriz='center', color = 'white')
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2,
+    alignHoriz='center')
 
 instructions.text = instruction_dictionary['instructions.text']
 instructions.draw()
@@ -300,7 +306,10 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2,
+    alignHoriz='center')
 
 instructions.text = instruction_dictionary['instructions.text2']
 instructions.draw()
@@ -311,7 +320,10 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Adding other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2,
+    alignHoriz='center')
 
 instructions.text = instruction_dictionary['instructions.text3']
 instructions.draw()
@@ -333,7 +345,10 @@ keys = event.waitKeys(keyList=['space','escape'])
 # Addig other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
-    wrapWidth=None, height= 1/deg_per_px, alignHoriz='center', color = 'white')
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2,
+    alignHoriz='center')
 
 instructions.text = instruction_dictionary['instructions.text4']
 instructions.draw()
@@ -354,10 +369,35 @@ prac_trials_per_block = 10
 
 # Number of blocks and trials per block
 num_blocks = 4
-trials_per_block = 50
+trials_per_block = 55
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
+
+# %% Calculation of image_size
+
+# Constants for the calculation
+d = float(exp_info['screendistance(cm)'])  # eye-screen distance in cm
+dd = 2 * d  # 2*d
+pixelPitch = 0.315  # pixel size in mm (to change depending on your screen)
+screenWidthPix = float(exp_info['screenresolutionhori(pixels)'])  # screen width in pixels
+screenHeightPix = float(exp_info['screenresolutionvert(pixels)']) # screen height in pixels
+
+# Calculate screen width and height in cm
+screenWidthCm = pixelPitch * screenWidthPix / 10  # screen width in cm
+screenHeightCm = pixelPitch * screenHeightPix / 10  # screen height in cm
+
+# Desired angular size (width and height) in degrees
+alphaW = float(exp_info['desired_visual_angle'])
+alphaH = float(exp_info['desired_visual_angle'])
+
+# Calculate image width and height in cm for the desired angular size
+real_hori = dd * math.tan(math.radians(alphaW / 2))  # image width in cm = 2dtan(alpha/2)
+real_vert = dd * math.tan(math.radians(alphaH / 2))  # image height in cm = 2dtan(alpha/2)
+
+# Calculate image width and height in pixels for the desired size
+real_hori_pix = round(real_hori * screenWidthPix / screenWidthCm)  # image width in pixels
+real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image height in pixels
 
 # %% Homemade functions
 
@@ -383,16 +423,14 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 
     # clear the host screen before we draw the backdrop
     el_tracker.sendCommand('clear_screen 0')
-
-    # send a "TRIALID" message to mark the start of a trial, see Data
-    # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-    el_tracker.sendMessage('TRIALID %d' % trial_index)
-
+    
+    # send message to eye tracker to signal the start of the trial
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d' % (block,trial_index))
+    
     # record_status_message : show some info on the Host PC
-    # here we show how many trial has been tested
-    status_msg = 'TRIAL number %d' % trial_index
+    status_msg = 'BLOCK_number %d TRIAL number %d' % (block,trial_index)
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
-
+  
     # # drift check
     # # Perform drift check every 10 trials
     # if trial_index % 10 == 0 and trial_index != 50 :
@@ -469,26 +507,31 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     fixation_duration = rnd.uniform(0.8, 1.6) 
     fixation_cross.draw() # Display the fixation cross
     win.flip()
-    el_tracker.sendMessage('FIXATION_DISPLAY')
+    # el_tracker.sendMessage('FIXATION_DISPLAY %d' )
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d FIXATION_DISPLAY' % (block,trial_index))
     core.wait(fixation_duration) # Wait for the fixation duration to pass
     
     # 2. Clear the window and wait for a brief period (0.2 seconds)
     win.flip()
-    el_tracker.sendMessage('GAP_DISPLAY')
+    # el_tracker.sendMessage('GAP_DISPLAY %d')
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d GAP_DISPLAY' % (block,trial_index))
     core.wait(0.2)
     
     # 3. Draw and display the target and distractor images for 0.4 seconds
     target_image.draw()
     distractor_image.draw()
     win.flip()
-    el_tracker.sendMessage('TARGET_DISPLAY')
+    # el_tracker.sendMessage('TARGET_DISPLAY %d')
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_DISPLAY' % (block,trial_index))
     core.wait(0.4)
     
     # 4. Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
-    el_tracker.sendMessage('TARGET_END')
+    # el_tracker.sendMessage('TARGET_END %d')
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_END' % (block,trial_index))
     core.wait(1.0)
-    el_tracker.sendMessage('ISI_END')
+    # el_tracker.sendMessage('ISI_END %d')
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d ISI_END' % (block,trial_index))
     
     # stop recording; add 100 msec to catch final events before stopping
     pylink.pumpDelay(100)
@@ -496,9 +539,32 @@ def run_trial(win, target_image, distractor_image, layout_direction):
 
     # record trial variables to the EDF data file, for details, see Data
     # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-    # el_tracker.sendMessage('!V TRIAL_VAR condition %s' % cond)
-    # el_tracker.sendMessage('!V TRIAL_VAR image %s' % pic)
-    # el_tracker.sendMessage('!V TRIAL_VAR RT %d' % RT)
+    el_tracker.sendMessage('!V TRIAL_VAR layout %s' % layout_direction)
+    el_tracker.sendMessage('!V TRIAL_VAR target image %s' % target_image)
+    el_tracker.sendMessage('!V TRIAL_VAR target position %s' % target_image.pos)
+    el_tracker.sendMessage('!V TRIAL_VAR distractor image %s' % distractor_image)
+    el_tracker.sendMessage('!V TRIAL_VAR distractor position %s' % distractor_image.pos)
+    
+    # send interest area messages to record in the EDF data file
+    # first we define left, top, right and bottom
+    # Calculate ROI dimensions in pixels
+    extra_degrees = 1  # Additional 1 degree margin
+    extra_pixels = int(extra_degrees * deg_per_px)
+    roi_width = real_hori_pix + 2 * extra_pixels  # Extra pixels on both sides
+    roi_height = real_vert_pix + 2 * extra_pixels  # Extra pixels on both sides
+    
+    # Calculate ROI position
+    left = int(float(exp_info['screenresolutionhori(pixels)'])/2.0) - roi_width / 2 + extra_pixels
+    top = int(float(exp_info['screenresolutionvert(pixels)'])/2.0) - roi_height / 2 + extra_pixels
+    right = int(float(exp_info['screenresolutionhori(pixels)'])/2.0) + roi_width / 2 + extra_pixels
+    bottom = int(float(exp_info['screenresolutionvert(pixels)'])/2.0) + roi_height / 2 + extra_pixels
+    
+    # here we draw a rectangular IA, for illustration purposes
+    # format: !V IAREA RECTANGLE <id> <left> <top> <right> <bottom> [label]
+    # for all supported interest area commands, see the Data Viewer Manual,
+    # "Protocol for EyeLink Data to Viewer Integration" 
+    ia_pars = (1, left, top, right, bottom, 'screen_center')
+    el_tracker.sendMessage('!V IAREA RECTANGLE %d %d %d %d %d %s' % ia_pars)
 
     # send a 'TRIAL_RESULT' message to mark the end of trial
     el_tracker.sendMessage('TRIAL_RESULT %d' % pylink.TRIAL_OK)
@@ -518,7 +584,7 @@ def block_break(block_no, totalblocks, timershort, timerlong):
         height=1/deg_per_px,
         wrapWidth=horipix/2,
         alignHoriz='center')
-    
+  
     blocktext.text = instruction_dictionary['blocktext1.text'] + str(timer) + instruction_dictionary['blocktext2.text'] + str(block_no) + "/" + str(totalblocks)
     
     # Create a visual stimulus for the timer text
@@ -646,31 +712,6 @@ def abort_trial():
 
     return pylink.TRIAL_ERROR    
 
-# %% Calculation of image_size
-
-# Constants for the calculation
-d = float(exp_info['screendistance(cm)'])  # eye-screen distance in cm
-dd = 2 * d  # 2*d
-pixelPitch = 0.315  # pixel size in mm (to change depending on your screen)
-screenWidthPix = float(exp_info['screenresolutionhori(pixels)'])  # screen width in pixels
-screenHeightPix = float(exp_info['screenresolutionvert(pixels)']) # screen height in pixels
-
-# Calculate screen width and height in cm
-screenWidthCm = pixelPitch * screenWidthPix / 10  # screen width in cm
-screenHeightCm = pixelPitch * screenHeightPix / 10  # screen height in cm
-
-# Desired angular size (width and height) in degrees
-alphaW = float(exp_info['desired_visual_angle'])
-alphaH = float(exp_info['desired_visual_angle'])
-
-# Calculate image width and height in cm for the desired angular size
-real_hori = dd * math.tan(math.radians(alphaW / 2))  # image width in cm = 2dtan(alpha/2)
-real_vert = dd * math.tan(math.radians(alphaH / 2))  # image height in cm = 2dtan(alpha/2)
-
-# Calculate image width and height in pixels for the desired size
-real_hori_pix = round(real_hori * screenWidthPix / screenWidthCm)  # image width in pixels
-real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image height in pixels
-
 # %% Start calibration
 
 # Set up the camera and calibrate the tracker
@@ -734,7 +775,7 @@ for block in range(prac_blocks):
     
     rnd.shuffle(target_images)
     rnd.shuffle(distractor_images)
-
+    
     # Loop through trials within each block
     trial_index = 1
     for trial in range(prac_trials_per_block):
@@ -816,7 +857,7 @@ for block in range(num_blocks):
 
     rnd.shuffle(target_images)
     rnd.shuffle(distractor_images)
-
+    
     # Loop through trials within each block
     trial_index = 1
     for trial in range(trials_per_block):
