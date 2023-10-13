@@ -741,6 +741,18 @@ practice_vehicle_images = random.sample(vehicle_images, 10)
 main_face_images = [img for img in face_images if img not in practice_face_images]
 main_vehicle_images = [img for img in vehicle_images if img not in practice_vehicle_images]
 
+# Create a list of random pairs of images
+practice_image_pairs = []
+main_image_pairs = []
+
+for i in range(len(practice_face_images)):
+    practice_image_pairs.append((practice_face_images[i], practice_vehicle_images[i]))
+
+for i in range(len(main_face_images)):
+    main_image_pairs.append((main_face_images[i], main_vehicle_images[i]))
+
+rnd.shuffle(practice_image_pairs)
+rnd.shuffle(main_image_pairs)
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -760,27 +772,36 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(prac_blocks):
     if condition_order[block] == 0:
-        target_images = practice_face_images
-        distractor_images = practice_vehicle_images
+        target_image_pairs = practice_image_pairs
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = practice_vehicle_images
-        distractor_images = practice_face_images
+        target_image_pairs = [(pair[1], pair[0]) for pair in practice_image_pairs]  # Swap pairs for vehicles
         target_text = instruction_dictionary['instructions.vehicles']
+
+    # if condition_order[block] == 0:
+    #     target_images = practice_face_images
+    #     distractor_images = practice_vehicle_images
+    #     target_text = instruction_dictionary['instructions.faces']
+    # else:
+    #     target_images = practice_vehicle_images
+    #     distractor_images = practice_face_images
+    #     target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
     if condition_order[block] != prev_condition_order:
         display_target_info(win, target_text)
         prev_condition_order = condition_order[block]
     
-    rnd.shuffle(target_images)
-    rnd.shuffle(distractor_images)
+    # rnd.shuffle(target_images)
+    # rnd.shuffle(distractor_images)
+    rnd.shuffle(practice_image_pairs)
     
     # Loop through trials within each block
     trial_index = 1
     for trial in range(prac_trials_per_block):
-        target_image_path = target_images[trial]
-        distractor_image_path = distractor_images[trial]
+        target_image_path, distractor_image_path = practice_image_pairs[trial]
+        # target_image_path = target_images[trial]
+        # distractor_image_path = distractor_images[trial]
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
@@ -834,13 +855,20 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
-        target_images = main_face_images
-        distractor_images = main_vehicle_images
+        target_image_pairs = main_image_pairs
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = main_vehicle_images
-        distractor_images = main_face_images
+        target_image_pairs = [(pair[1], pair[0]) for pair in main_image_pairs]  # Swap pairs for vehicles
         target_text = instruction_dictionary['instructions.vehicles']
+    
+    # if condition_order[block] == 0:
+    #     target_images = main_face_images
+    #     distractor_images = main_vehicle_images
+    #     target_text = instruction_dictionary['instructions.faces']
+    # else:
+    #     target_images = main_vehicle_images
+    #     distractor_images = main_face_images
+    #     target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
     if condition_order[block] != prev_condition_order:
@@ -855,14 +883,16 @@ for block in range(num_blocks):
             print('ERROR:', err)
             el_tracker.exitCalibration()
 
-    rnd.shuffle(target_images)
-    rnd.shuffle(distractor_images)
+    rnd.shuffle(target_image_pairs)
+    # rnd.shuffle(target_images)
+    # rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
     trial_index = 1
     for trial in range(trials_per_block):
-        target_image_path = target_images[trial]
-        distractor_image_path = distractor_images[trial]
+        target_image_path, distractor_image_path = target_image_pairs[trial]
+        # target_image_path = target_images[trial]
+        # distractor_image_path = distractor_images[trial]
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
