@@ -202,6 +202,11 @@ el_tracker.sendCommand("file_sample_data = %s" % file_sample_flags)
 el_tracker.sendCommand("link_event_filter = %s" % link_event_flags)
 el_tracker.sendCommand("link_sample_data = %s" % link_sample_flags)
 
+# Setting a smaller calibration area (use only if your screen is bigger than tracking area)
+el_tracker.sendCommand("generate_default_targets = NO")
+el_tracker.sendCommand("calibration_area_proportion = 0.54 0.42")
+el_tracker.sendCommand("validation_area_proportion = 0.54 0.42")
+
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 el_tracker.sendCommand("calibration_type = HV9")
@@ -331,12 +336,12 @@ instructions.draw()
 # Adding examples
 image_path1 = os.path.join(image_directory, "faces (41).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path1)
-image_stim = visual.ImageStim(win, image=bitmap_im, pos=[15/deg_per_px, 0], size=9/deg_per_px)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[-15/deg_per_px, -5/deg_per_px], size= 7/deg_per_px)
 image_stim.draw()
 
 image_path2 = os.path.join(image_directory, "vehicule (191).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path2)
-image_stim = visual.ImageStim(win, image=bitmap_im, pos=[15/deg_per_px, 0], size=9/deg_per_px)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[15/deg_per_px, -5/deg_per_px], size= 7/deg_per_px)
 image_stim.draw()
 
 win.flip() 
@@ -569,6 +574,9 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # send a 'TRIAL_RESULT' message to mark the end of trial
     el_tracker.sendMessage('TRIAL_RESULT %d' % pylink.TRIAL_OK)
     
+    if 'escape' in keys:
+        win.close()
+    
 ### Function that draws a break between blocks, shows which block they are at,
 # and takes as arguments block no, the break time between each block, and a
 # long break at every x block.
@@ -753,6 +761,7 @@ for i in range(len(main_face_images)):
 
 rnd.shuffle(practice_image_pairs)
 rnd.shuffle(main_image_pairs)
+
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -798,6 +807,7 @@ for block in range(prac_blocks):
     
     # Loop through trials within each block
     trial_index = 1
+    
     for trial in range(prac_trials_per_block):
         target_image_path, distractor_image_path = practice_image_pairs[trial]
         # target_image_path = target_images[trial]
