@@ -331,12 +331,12 @@ instructions.draw()
 # Adding examples
 image_path1 = os.path.join(image_directory, "faces (41).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path1)
-image_stim = visual.ImageStim(win, image=bitmap_im, pos=[-13/deg_per_px, 0], size=6/deg_per_px)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[15/deg_per_px, 0], size=9/deg_per_px)
 image_stim.draw()
 
 image_path2 = os.path.join(image_directory, "vehicule (191).jpg")  # Replace with your image path
 bitmap_im = Image.open(image_path2)
-image_stim = visual.ImageStim(win, image=bitmap_im, pos=[13/deg_per_px, 0], size=6/deg_per_px)
+image_stim = visual.ImageStim(win, image=bitmap_im, pos=[15/deg_per_px, 0], size=9/deg_per_px)
 image_stim.draw()
 
 win.flip() 
