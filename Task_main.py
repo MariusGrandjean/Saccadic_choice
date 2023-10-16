@@ -10,6 +10,7 @@ from __future__ import division
 from __future__ import print_function
 
 import pylink
+import csv
 from math import atan2, degrees
 import os
 import time
@@ -40,9 +41,6 @@ while True:
     dlg = gui.Dlg(dlg_title)
     dlg.addText(dlg_prompt)
     dlg.addField('File Name:', edf_fname)
-    dlg.addField('Right/left handed?', choices=['left','right'])
-    dlg.addField('Gender', choices=['male','female'])
-    dlg.addField('Age:','')
     # show dialog and wait for OK or Cancel
     ok_data = dlg.show()
     if dlg.OK:  # if ok_data is not None
@@ -90,21 +88,21 @@ face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/P
 vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
   
 # %% Subject info
-
+# This part should be modified according to your preferences and settings
 exp_name = 'Saccadic_choice'
 exp_info = {
         'dummy_mode':('FALSE', 'TRUE'),
-        # 'participant': '',
-        # 'gender': ('male', 'female'),
-        # 'age':'',
-        # 'left-handed':False,
+        'participant': '',
+        'gender': ('male', 'female'),
+        'age':'',
+        'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
-        'desired_visual_angle' : '11',
-        'screenwidth(cm)': '49',
-        'screendistance(cm)': '57',
-        'screenresolutionhori(pixels)': '1920',
-        'screenresolutionvert(pixels)': '1080',
-        'refreshrate(hz)': '120'}
+        'desired_visual_angle' : '11', 
+        'screenwidth(cm)': '47', 
+        'screendistance(cm)': '60', 
+        'screenresolutionhori(pixels)': '1920', 
+        'screenresolutionvert(pixels)': '1080', 
+        'refreshrate(hz)': '165'} 
 
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)
     
@@ -116,6 +114,22 @@ if dlg.OK == False:
 exp_info['date'] = data.getDateStr()
 exp_info['exp_name'] = exp_name
 
+datapath = 'data'        
+ 
+# Create a unique filename for the experiment data
+if not os.path.isdir(datapath):
+    os.makedirs(datapath)
+data_fname = exp_info['participant'] + '_' + exp_info['date']
+data_fname = os.path.join(datapath, data_fname)
+
+csv_filename = f"{data_fname}_experiment_info.csv"
+
+with open(csv_filename, 'w', newline='') as csvfile:
+    fieldnames = exp_info.keys()
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerow(exp_info)
+
 # %% Creation of a dictonary with all the instruction
 
 instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'une part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
@@ -126,7 +140,7 @@ instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez v
                           'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien la croix au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
                           'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien la croix au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
                           'timertext.text':"Prêt",
-                          'blocktext1.text': "Veuillez faire une courte pause avant le prochain bloc. \nVous pouvez appuyer sur ESPACE pour continuer après ",
+                          'blocktext1.text': "Vous pouvez faire une courte pause avant le prochain bloc. \n\nVeuillez garder votre tête immobile et bien positionée sur la mentionnière. \n\nVous pourrez appuyer sur ESPACE pour continuer après ",
                           'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:",
                           'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESCAPE pour arrêter la tâche prématurément.\n",
                           'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'entrainement.",
@@ -204,8 +218,8 @@ el_tracker.sendCommand("link_sample_data = %s" % link_sample_flags)
 
 # Setting a smaller calibration area (use only if your screen is bigger than tracking area)
 el_tracker.sendCommand("generate_default_targets = NO")
-el_tracker.sendCommand("calibration_area_proportion = 0.54 0.42")
-el_tracker.sendCommand("validation_area_proportion = 0.54 0.42")
+el_tracker.sendCommand("calibration_area_proportion = 0.59 0.46")
+el_tracker.sendCommand("validation_area_proportion = 0.59 0.46")
 
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
@@ -512,31 +526,26 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     fixation_duration = rnd.uniform(0.8, 1.6) 
     fixation_cross.draw() # Display the fixation cross
     win.flip()
-    # el_tracker.sendMessage('FIXATION_DISPLAY %d' )
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d FIXATION_DISPLAY' % (block,trial_index))
+    el_tracker.sendMessage('FIXATION_DISPLAY %d' )
     core.wait(fixation_duration) # Wait for the fixation duration to pass
     
     # 2. Clear the window and wait for a brief period (0.2 seconds)
     win.flip()
-    # el_tracker.sendMessage('GAP_DISPLAY %d')
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d GAP_DISPLAY' % (block,trial_index))
+    el_tracker.sendMessage('GAP_DISPLAY %d')
     core.wait(0.2)
     
     # 3. Draw and display the target and distractor images for 0.4 seconds
     target_image.draw()
     distractor_image.draw()
     win.flip()
-    # el_tracker.sendMessage('TARGET_DISPLAY %d')
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_DISPLAY' % (block,trial_index))
+    el_tracker.sendMessage('TARGET_DISPLAY %d')
     core.wait(0.4)
     
     # 4. Clear the window and wait for 1.0 second (end of the trial)
     win.flip()
-    # el_tracker.sendMessage('TARGET_END %d')
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_END' % (block,trial_index))
+    el_tracker.sendMessage('TARGET_END %d')
     core.wait(1.0)
-    # el_tracker.sendMessage('ISI_END %d')
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d ISI_END' % (block,trial_index))
+    el_tracker.sendMessage('ISI_END %d')
     
     # stop recording; add 100 msec to catch final events before stopping
     pylink.pumpDelay(100)
@@ -749,18 +758,6 @@ practice_vehicle_images = random.sample(vehicle_images, 10)
 main_face_images = [img for img in face_images if img not in practice_face_images]
 main_vehicle_images = [img for img in vehicle_images if img not in practice_vehicle_images]
 
-# Create a list of random pairs of images
-practice_image_pairs = []
-main_image_pairs = []
-
-for i in range(len(practice_face_images)):
-    practice_image_pairs.append((practice_face_images[i], practice_vehicle_images[i]))
-
-for i in range(len(main_face_images)):
-    main_image_pairs.append((main_face_images[i], main_vehicle_images[i]))
-
-rnd.shuffle(practice_image_pairs)
-rnd.shuffle(main_image_pairs)
 
 # %% Practice loop
 
@@ -781,37 +778,28 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(prac_blocks):
     if condition_order[block] == 0:
-        target_image_pairs = practice_image_pairs
+        target_images = practice_face_images
+        distractor_images = practice_vehicle_images
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_image_pairs = [(pair[1], pair[0]) for pair in practice_image_pairs]  # Swap pairs for vehicles
+        target_images = practice_vehicle_images
+        distractor_images = practice_face_images
         target_text = instruction_dictionary['instructions.vehicles']
-
-    # if condition_order[block] == 0:
-    #     target_images = practice_face_images
-    #     distractor_images = practice_vehicle_images
-    #     target_text = instruction_dictionary['instructions.faces']
-    # else:
-    #     target_images = practice_vehicle_images
-    #     distractor_images = practice_face_images
-    #     target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
     if condition_order[block] != prev_condition_order:
         display_target_info(win, target_text)
         prev_condition_order = condition_order[block]
     
-    # rnd.shuffle(target_images)
-    # rnd.shuffle(distractor_images)
-    rnd.shuffle(practice_image_pairs)
+    rnd.shuffle(target_images)
+    rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
     trial_index = 1
-    
+
     for trial in range(prac_trials_per_block):
-        target_image_path, distractor_image_path = practice_image_pairs[trial]
-        # target_image_path = target_images[trial]
-        # distractor_image_path = distractor_images[trial]
+        target_image_path = target_images[trial]
+        distractor_image_path = distractor_images[trial]
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
@@ -865,20 +853,13 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
-        target_image_pairs = main_image_pairs
+        target_images = main_face_images
+        distractor_images = main_vehicle_images
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_image_pairs = [(pair[1], pair[0]) for pair in main_image_pairs]  # Swap pairs for vehicles
+        target_images = main_vehicle_images
+        distractor_images = main_face_images
         target_text = instruction_dictionary['instructions.vehicles']
-    
-    # if condition_order[block] == 0:
-    #     target_images = main_face_images
-    #     distractor_images = main_vehicle_images
-    #     target_text = instruction_dictionary['instructions.faces']
-    # else:
-    #     target_images = main_vehicle_images
-    #     distractor_images = main_face_images
-    #     target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
     if condition_order[block] != prev_condition_order:
@@ -893,16 +874,14 @@ for block in range(num_blocks):
             print('ERROR:', err)
             el_tracker.exitCalibration()
 
-    rnd.shuffle(target_image_pairs)
-    # rnd.shuffle(target_images)
-    # rnd.shuffle(distractor_images)
+    rnd.shuffle(target_images)
+    rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
     trial_index = 1
     for trial in range(trials_per_block):
-        target_image_path, distractor_image_path = target_image_pairs[trial]
-        # target_image_path = target_images[trial]
-        # distractor_image_path = distractor_images[trial]
+        target_image_path = target_images[trial]
+        distractor_image_path = distractor_images[trial]
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
