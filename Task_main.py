@@ -122,8 +122,8 @@ if not os.path.isdir(datapath):
 data_fname = exp_info['participant'] + '_' + exp_info['date']
 data_fname = os.path.join(datapath, data_fname)
 
+# Save the file in data folder
 csv_filename = f"{exp_info['participant']}_{exp_info['date']}_{exp_info['Layout']}.csv"
-
 
 with open(csv_filename, 'w', newline='') as csvfile:
     fieldnames = exp_info.keys()
