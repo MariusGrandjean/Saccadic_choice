@@ -28,7 +28,7 @@ from string import ascii_letters, digits
 
 # The EDF data filename should not exceed 8 alphanumeric characters
 # use ONLY number 0-9, letters, & _ (underscore) in the filename
-edf_fname = 'TEST'
+edf_fname = 'Hor_test' # Always indicate whether horizontal or vertical (for analysis sake)
 
 # Prompt user to specify an EDF data filename
 # before we open a fullscreen window
@@ -86,7 +86,7 @@ if not os.path.exists(session_folder):
 image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final"
 face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*faces*.jpg")
 vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
-  
+
 # %% Subject info
 # This part should be modified according to your preferences and settings
 exp_name = 'Saccadic_choice'
@@ -445,8 +445,10 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     el_tracker.sendCommand('clear_screen 0')
     
     # send message to eye tracker to signal the start of the trial
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d' % (block,trial_index))
-    
+    # also record trial variables to the EDF data file, for details, see Data
+    # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_IMAGE %s TARGET_POSITION %s DISTRACTOR_IMAGE %s DISTRACTOR_POSITION %s ' % (block,trial_index, target_image_name, target_position, distractor_image_name, distractor_position))
+ 
     # record_status_message : show some info on the Host PC
     status_msg = 'BLOCK_number %d TRIAL number %d' % (block,trial_index)
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
@@ -552,14 +554,6 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     pylink.pumpDelay(100)
     el_tracker.stopRecording()
 
-    # record trial variables to the EDF data file, for details, see Data
-    # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-    el_tracker.sendMessage('!V TRIAL_VAR layout %s' % layout_direction)
-    el_tracker.sendMessage('!V TRIAL_VAR target image %s' % target_image)
-    el_tracker.sendMessage('!V TRIAL_VAR target position %s' % target_image.pos)
-    el_tracker.sendMessage('!V TRIAL_VAR distractor image %s' % distractor_image)
-    el_tracker.sendMessage('!V TRIAL_VAR distractor position %s' % distractor_image.pos)
-    
     # send interest area messages to record in the EDF data file
     # first we define left, top, right and bottom
     # Calculate ROI dimensions in pixels
@@ -800,21 +794,45 @@ for block in range(prac_blocks):
 
     for trial in range(prac_trials_per_block):
         target_image_path = target_images[trial]
+        target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
         distractor_image_path = distractor_images[trial]
-        
+        distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
+       
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
         
+        # Initialize variables to store the image positions for target and distractor images
+        target_position = None  
+        distractor_position = None  
+
         # Specify the direction of the layout
         if layout_direction == 'vertical':
-            position = random.choice([(0, 15/deg_per_px), (0, -15/deg_per_px)])
-            
+            if random.choice([True, False]):
+                position = (0, 15/deg_per_px)  # Position on the top
+                target_position = 'top'
+            else:
+                position = (0, -15/deg_per_px)  # Position on the bottom
+                target_position = 'bottom'
+                
         elif layout_direction == 'horizontal':
-            position = random.choice([(15/deg_per_px, 0), (-15/deg_per_px, 0)])
+            if random.choice([True, False]):
+                position = (15/deg_per_px, 0)  # Position on the right
+                target_position = 'right'
+            else:
+                position = (-15/deg_per_px, 0)  # Position on the left
+                target_position = 'left'
     
         target_image.pos = position
         distractor_image.pos = (-position[0], -position[1])  # Opposite position
-
+        
+        if target_position == 'top':
+            distractor_position = 'bottom'
+        elif target_position == 'bottom':
+            distractor_position = 'top'
+        elif target_position == 'right':
+            distractor_position = 'left'
+        elif target_position == 'left':
+            distractor_position = 'right'
                
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
@@ -882,21 +900,47 @@ for block in range(num_blocks):
     trial_index = 1
     for trial in range(trials_per_block):
         target_image_path = target_images[trial]
+        target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
         distractor_image_path = distractor_images[trial]
+        distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
+       
         
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
                
+        # Initialize variables to store the image positions for target and distractor images
+        target_position = None  
+        distractor_position = None  
+        
         # Specify the direction of the layout
         if layout_direction == 'vertical':
-            position = random.choice([(0, 15/deg_per_px), (0, -15/deg_per_px)])
-            
+            if random.choice([True, False]):
+                position = (0, 15/deg_per_px)  # Position on the top
+                target_position = 'top'
+            else:
+                position = (0, -15/deg_per_px)  # Position on the bottom
+                target_position = 'bottom'
+                
         elif layout_direction == 'horizontal':
-            position = random.choice([(15/deg_per_px, 0), (-15/deg_per_px, 0)])
-    
+            if random.choice([True, False]):
+                position = (15/deg_per_px, 0)  # Position on the right
+                target_position = 'right'
+            else:
+                position = (-15/deg_per_px, 0)  # Position on the left
+                target_position = 'left'
+                  
         target_image.pos = position
         distractor_image.pos = (-position[0], -position[1])  # Opposite position
-               
+
+        if target_position == 'top':
+            distractor_position = 'bottom'
+        elif target_position == 'bottom':
+            distractor_position = 'top'
+        elif target_position == 'right':
+            distractor_position = 'left'
+        elif target_position == 'left':
+            distractor_position = 'right'
+            
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
     
