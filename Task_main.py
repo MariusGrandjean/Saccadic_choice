@@ -28,7 +28,7 @@ from string import ascii_letters, digits
 
 # The EDF data filename should not exceed 8 alphanumeric characters
 # use ONLY number 0-9, letters, & _ (underscore) in the filename
-edf_fname = 'Hor_test' # Always indicate whether horizontal or vertical (for analysis sake)
+edf_fname = 'Hor_name' # Always indicate whether horizontal or vertical (for analysis sake)
 
 # Prompt user to specify an EDF data filename
 # before we open a fullscreen window
@@ -225,6 +225,7 @@ el_tracker.sendCommand("validation_area_proportion = 0.59 0.46")
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
 el_tracker.sendCommand("calibration_type = HV9")
+
 # Set a gamepad button to accept calibration/drift check target
 # You need a supported gamepad/button box that is connected to the Host PC
 el_tracker.sendCommand("button_function 5 'accept_target_fixation'")
@@ -450,10 +451,10 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # send message to eye tracker to signal the start of the trial
     # also record trial variables to the EDF data file, for details, see Data
     # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET_IMAGE %s TARGET_POSITION %s DISTRACTOR_IMAGE %s DISTRACTOR_POSITION %s ' % (block,trial_index, target_image_name, target_position, distractor_image_name, distractor_position))
+    el_tracker.sendMessage('BLOCKID %d TRIALID %d TARGET %s TARGET_POSITION %s DISTRACTOR %s DISTRACTOR_POSITION %s ' % (block,trial_index, target_image_name, target_position, distractor_image_name, distractor_position))
  
     # record_status_message : show some info on the Host PC
-    status_msg = 'BLOCK_number %d TRIAL number %d' % (block,trial_index)
+    status_msg = 'BLOCK_number %d TRIAL number %d TARGET %s TARGET_POSITION %s' % (block,trial_index, target_image_name, target_position)
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
   
     # # drift check
@@ -793,7 +794,6 @@ for block in range(prac_blocks):
     rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
-
     for trial in range(prac_trials_per_block):
         target_image_path = target_images[trial]
         target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
@@ -808,10 +808,12 @@ for block in range(prac_blocks):
         distractor_position = None  
 
         # Specify the direction of the layout
+        # In here we are also defining the litteral name of the position to facilitate
+        # the extraction of the results
         if layout_direction == 'vertical':
             if random.choice([True, False]):
                 position = (0, 15/deg_per_px)  # Position on the top
-                target_position = 'top'
+                target_position = 'top' 
             else:
                 position = (0, -15/deg_per_px)  # Position on the bottom
                 target_position = 'bottom'
@@ -827,6 +829,7 @@ for block in range(prac_blocks):
         target_image.pos = position
         distractor_image.pos = (-position[0], -position[1])  # Opposite position
         
+        # Now we do the same for the distractor
         if target_position == 'top':
             distractor_position = 'bottom'
         elif target_position == 'bottom':
@@ -914,6 +917,9 @@ for block in range(num_blocks):
         distractor_position = None  
         
         # Specify the direction of the layout
+        # In here we are also defining the litteral name of the position to facilitate
+        # the extraction of the results
+        # First we begin with the target 
         if layout_direction == 'vertical':
             if random.choice([True, False]):
                 position = (0, 15/deg_per_px)  # Position on the top
@@ -932,7 +938,8 @@ for block in range(num_blocks):
                   
         target_image.pos = position
         distractor_image.pos = (-position[0], -position[1])  # Opposite position
-
+        
+        # Now we do the same for the distractor
         if target_position == 'top':
             distractor_position = 'bottom'
         elif target_position == 'bottom':
