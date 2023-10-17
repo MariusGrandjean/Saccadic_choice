@@ -391,6 +391,9 @@ prac_trials_per_block = 10
 num_blocks = 4
 trials_per_block = 55
 
+# Initialize trial_index before the first block
+trial_index = 1
+
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
 
@@ -790,7 +793,6 @@ for block in range(prac_blocks):
     rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
-    trial_index = 1
 
     for trial in range(prac_trials_per_block):
         target_image_path = target_images[trial]
@@ -897,7 +899,6 @@ for block in range(num_blocks):
     rnd.shuffle(distractor_images)
     
     # Loop through trials within each block
-    trial_index = 1
     for trial in range(trials_per_block):
         target_image_path = target_images[trial]
         target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
