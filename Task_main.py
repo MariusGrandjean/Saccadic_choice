@@ -737,8 +737,8 @@ main_face_images = [img for img in face_images if img not in practice_face_image
 main_vehicle_images = [img for img in vehicle_images if img not in practice_vehicle_images]
 
 # Initialize dictionaries to keep track of image display counts
-target_display_counts = {}
-distractor_display_counts = {}
+face_display_counts = {}
+vehicle_display_counts = {}
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -781,22 +781,14 @@ for block in range(prac_blocks):
         distractor_image_path = distractor_images[trial]
         distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
 
-        # Handle target image
-        if target_display_counts.get(target_image_name, 0) >= 2:
-            target_images.remove(target_image_path)
-            rnd.shuffle(target_images)
-            target_image_path = target_images[trial]
-            target_image_name = os.path.basename(target_image_path)
-        target_display_counts[target_image_name] = target_display_counts.get(target_image_name, 0) + 1
+        # Handle face image
+        # if face_display_counts.get(target_image_name, 0) > 2:
+        #     target_images.remove(target_image_path)
+        #     rnd.shuffle(target_images)
+        #     target_image_path = target_images[trial]
+        #     target_image_name = os.path.basename(target_image_path)
+        # target_display_counts[target_image_name] = target_display_counts.get(target_image_name, 0) + 1
         
-        # Handle distractor image
-        if distractor_display_counts.get(distractor_image_name, 0) >= 2:
-            distractor_images.remove(distractor_image_path)
-            rnd.shuffle(distractor_images)
-            distractor_image_path = distractor_images[trial]
-            distractor_image_name = os.path.basename(distractor_image_path)
-        distractor_display_counts[distractor_image_name] = distractor_display_counts.get(distractor_image_name, 0) + 1
-
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
@@ -906,22 +898,6 @@ for block in range(num_blocks):
         distractor_image_path = distractor_images[trial]
         distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
        
-        # Handle target image
-        if target_display_counts.get(target_image_name, 0) >= 2:
-            target_images.remove(target_image_path)
-            rnd.shuffle(target_images)
-            target_image_path = target_images[trial]
-            target_image_name = os.path.basename(target_image_path)
-        target_display_counts[target_image_name] = target_display_counts.get(target_image_name, 0) + 1
-        
-        # Handle distractor image
-        if distractor_display_counts.get(distractor_image_name, 0) >= 2:
-            distractor_images.remove(distractor_image_path)
-            rnd.shuffle(distractor_images)
-            distractor_image_path = distractor_images[trial]
-            distractor_image_name = os.path.basename(distractor_image_path)
-        distractor_display_counts[distractor_image_name] = distractor_display_counts.get(distractor_image_name, 0) + 1
-
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
@@ -931,9 +907,6 @@ for block in range(num_blocks):
         distractor_position = None  
         
         # Specify the direction of the layout
-        # In here we are also defining the litteral name of the position to facilitate
-        # the extraction of the results
-        # First we begin with the target 
         if layout_direction == 'vertical':
             if random.choice([True, False]):
                 position = (0, 15/deg_per_px)  # Position on the top
