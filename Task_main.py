@@ -128,7 +128,7 @@ csv_filename = f"{exp_info['participant']}_{exp_info['date']}_{exp_info['Layout'
 with open(csv_filename, 'w', newline='') as csvfile:
     fieldnames = exp_info.keys()
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
+    writer.writeheader() 
     writer.writerow(exp_info)
 
 # %% Creation of a dictonary with all the instruction
@@ -456,28 +456,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     # record_status_message : show some info on the Host PC
     status_msg = 'BLOCK_number %d TRIAL number %d TARGET %s TARGET_POSITION %s' % (block,trial_index, target_image_name, target_position)
     el_tracker.sendCommand("record_status_message '%s'" % status_msg)
-  
-    # # drift check
-    # # Perform drift check every 10 trials
-    # if trial_index % 10 == 0 and trial_index != 50 :
-    #     # Skip drift-check if running the script in Dummy Mode
-    #     while not dummy_mode:
-    #         # terminate the task if no longer connected to the tracker or
-    #         # user pressed Ctrl-C to terminate the task
-    #         if (not el_tracker.isConnected()) or el_tracker.breakPressed():
-    #             terminate_task()
-    #             return pylink.ABORT_EXPT
-
-    #         # drift-check and re-do camera setup if ESCAPE is pressed
-    #         try:
-    #             error = el_tracker.doDriftCorrect(int(horipix/2.0),
-    #                                               int(vertpix/2.0), 1, 1)
-    #             # break following a success drift-check
-    #             if error is not pylink.ESC_KEY:
-    #                 break
-    #         except:
-    #             pass
-    
+   
     # drift correction
     # Perform drift correction every 10 trials
     if trial_index % 10 == 0 and trial_index != 50 :
@@ -757,7 +736,9 @@ practice_vehicle_images = random.sample(vehicle_images, 10)
 main_face_images = [img for img in face_images if img not in practice_face_images]
 main_vehicle_images = [img for img in vehicle_images if img not in practice_vehicle_images]
 
-
+# Initialize dictionaries to keep track of image display counts
+target_display_counts = {}
+distractor_display_counts = {}
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -799,7 +780,24 @@ for block in range(prac_blocks):
         target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
         distractor_image_path = distractor_images[trial]
         distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
-       
+
+        # Handle target image
+        if target_display_counts.get(target_image_name, 0) >= 2:
+            target_images.remove(target_image_path)
+            rnd.shuffle(target_images)
+            target_image_path = target_images[trial]
+            target_image_name = os.path.basename(target_image_path)
+        target_display_counts[target_image_name] = target_display_counts.get(target_image_name, 0) + 1
+        
+        # Handle distractor image
+        if distractor_display_counts.get(distractor_image_name, 0) >= 2:
+            distractor_images.remove(distractor_image_path)
+            rnd.shuffle(distractor_images)
+            distractor_image_path = distractor_images[trial]
+            distractor_image_name = os.path.basename(distractor_image_path)
+        distractor_display_counts[distractor_image_name] = distractor_display_counts.get(distractor_image_name, 0) + 1
+
+        # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
         
@@ -908,7 +906,23 @@ for block in range(num_blocks):
         distractor_image_path = distractor_images[trial]
         distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
        
+        # Handle target image
+        if target_display_counts.get(target_image_name, 0) >= 2:
+            target_images.remove(target_image_path)
+            rnd.shuffle(target_images)
+            target_image_path = target_images[trial]
+            target_image_name = os.path.basename(target_image_path)
+        target_display_counts[target_image_name] = target_display_counts.get(target_image_name, 0) + 1
         
+        # Handle distractor image
+        if distractor_display_counts.get(distractor_image_name, 0) >= 2:
+            distractor_images.remove(distractor_image_path)
+            rnd.shuffle(distractor_images)
+            distractor_image_path = distractor_images[trial]
+            distractor_image_name = os.path.basename(distractor_image_path)
+        distractor_display_counts[distractor_image_name] = distractor_display_counts.get(distractor_image_name, 0) + 1
+
+        # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
                
