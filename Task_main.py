@@ -393,7 +393,7 @@ num_blocks = 4
 trials_per_block = 55
 
 # Initialize trial_index before the first block
-trial_index = 1
+trial_index = 0
 
 # Set the desired layout direction
 layout_direction = exp_info['Layout']  
@@ -832,6 +832,7 @@ for block in range(prac_blocks):
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
         
+        print(f"Trial Number: {trial_index}, Target Position: {target_position}, Target Name: {target_image_name}")
         # Close the window if escape or space keys are pressed
         if 'escape' in keys:
             win.close()
@@ -938,7 +939,8 @@ for block in range(num_blocks):
             
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
-    
+        
+        print(f"Trial Number: {trial_index}, Target Position: {target_position}, Target Name: {target_image_name}")
     # Close the window if escape or space keys are pressed
     if 'escape' in keys:
         win.close()
