@@ -717,10 +717,11 @@ data_fname = f"{exp_info['participant']}_{exp_info['age']}_{exp_info['gender'][0
 data_fname = os.path.join(datapath, data_fname)
 
 # Open the file for writing and create a CSV writer with the specified fieldnames
-fieldnames = list(exp_info.keys()) + ['block', 'trial_index', 'target_image_name', 'target_position','distractor_image_name','distractor_position']
+fieldnames = list(exp_info.keys()) + ['block', 'trial_index', 'target_image_name', 'target_position', 'distractor_image_name', 'distractor_position']
 f = open(data_fname,'w',encoding='UTF8', newline='')
 writer=csv.DictWriter(f, fieldnames=fieldnames)
 writer.writeheader()
+
 
 # %% Assignment of images for both the practice and the main experiment
 
@@ -838,14 +839,16 @@ for block in range(prac_blocks):
         'target_position': target_position,
         'distractor_image_name': distractor_image_name,
         'distractor_position': distractor_position}
+        
         # Close the window if escape or space keys are pressed
         keys = event.getKeys()
         if 'escape' in keys:
             win.close()
             f.close()
 
-    
-        writer.writerow(trial_data)
+        # Write data to the .csv file
+        combined_data = {**exp_info, **trial_data}
+        writer.writerow(combined_data)
 
 # Adding further instructions
 instructions = visual.TextStim(win=win,
@@ -967,7 +970,10 @@ for block in range(num_blocks):
             win.close()
             f.close()
     
-        writer.writerow(trial_data)
+        # Write data into the .csv file
+        combined_data = {**exp_info, **trial_data}
+        writer.writerow(combined_data)
+        
     # Run block break function with a minimum of 10 seconds
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
