@@ -114,23 +114,6 @@ if dlg.OK == False:
 exp_info['date'] = data.getDateStr()
 exp_info['exp_name'] = exp_name
 
-datapath = 'data'        
- 
-# Create a unique filename for the experiment data
-if not os.path.isdir(datapath):
-    os.makedirs(datapath)
-data_fname = exp_info['participant'] + '_' + exp_info['date']
-data_fname = os.path.join(datapath, data_fname)
-
-# Save the file in data folder
-csv_filename = f"{exp_info['participant']}_{exp_info['date']}_{exp_info['Layout']}.csv"
-
-with open(csv_filename, 'w', newline='') as csvfile:
-    fieldnames = exp_info.keys()
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader() 
-    writer.writerow(exp_info)
-
 # %% Creation of a dictonary with all the instruction
 
 instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'une part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
@@ -224,7 +207,7 @@ el_tracker.sendCommand("validation_area_proportion = 0.59 0.46")
 
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
-el_tracker.sendCommand("calibration_type = HV9")
+el_tracker.sendCommand("calibration_type = HV5")
 
 # Set a gamepad button to accept calibration/drift check target
 # You need a supported gamepad/button box that is connected to the Host PC
@@ -726,6 +709,19 @@ if not dummy_mode:
         print('ERROR:', err)
         el_tracker.exitCalibration()
 
+# %% Create a unique filename for the experiment data
+datapath = 'data'
+if not os.path.isdir(datapath):
+    os.makedirs(datapath)
+data_fname = f"{exp_info['participant']}_{exp_info['age']}_{exp_info['gender'][0]}_{exp_info['date']}.csv"
+data_fname = os.path.join(datapath, data_fname)
+
+# Open the file for writing and create a CSV writer with the specified fieldnames
+fieldnames = list(exp_info.keys()) + ['block', 'trial_index', 'target_image_name', 'target_position','distractor_image_name','distractor_position']
+f = open(data_fname,'w',encoding='UTF8', newline='')
+writer=csv.DictWriter(f, fieldnames=fieldnames)
+writer.writeheader()
+
 # %% Assignment of images for both the practice and the main experiment
 
 # Randomly select 10 images per category for practice
@@ -832,10 +828,24 @@ for block in range(prac_blocks):
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
         
+        # Print trials info in console
         print(f"Trial Number: {trial_index}, Target Position: {target_position}, Target Name: {target_image_name}")
+        
+        trial_data = {
+        'block': block,
+        'trial_index': trial_index,
+        'target_image_name': target_image_name,
+        'target_position': target_position,
+        'distractor_image_name': distractor_image_name,
+        'distractor_position': distractor_position}
         # Close the window if escape or space keys are pressed
+        keys = event.getKeys()
         if 'escape' in keys:
             win.close()
+            f.close()
+
+    
+        writer.writerow(trial_data)
 
 # Adding further instructions
 instructions = visual.TextStim(win=win,
@@ -936,17 +946,31 @@ for block in range(num_blocks):
             distractor_position = 'left'
         elif target_position == 'left':
             distractor_position = 'right'
-            
+        
         run_trial(win, target_image, distractor_image, layout_direction)
         trial_index += 1
         
+        # Print trials info in console
         print(f"Trial Number: {trial_index}, Target Position: {target_position}, Target Name: {target_image_name}")
-    # Close the window if escape or space keys are pressed
-    if 'escape' in keys:
-        win.close()
+        
+        trial_data = {
+        'block': block,
+        'trial_index': trial_index,
+        'target_image_name': target_image_name,
+        'target_position': target_position,
+        'distractor_image_name': distractor_image_name,
+        'distractor_position': distractor_position}
+        
+        # Close the window if escape or space keys are pressed
+        keys = event.getKeys()
+        if 'escape' in keys:
+            win.close()
+            f.close()
     
+        writer.writerow(trial_data)
     # Run block break function with a minimum of 10 seconds
     block_break(block + 1, num_blocks, 10, 30)  # Adjust the timer values as needed
 
+f.close()    
 # Disconnect, download the EDF file, then terminate the task
 terminate_task()
