@@ -768,7 +768,9 @@ for practice_face, practice_vehicle in practice_pairs:
     # Swap the face and vehicle positions to create pairs B with the opposite directions
     practice_pairs_B.append((practice_face, practice_vehicle, vehicle_position, face_position, practice_vehicle_position, practice_face_position))
 
+# Combine the two practice_pairs lists
 all_practice_pairs = practice_pairs_A + practice_pairs_B
+#try to see if names work
 all_practice_faces_vehicle = [os.path.basename(pair[0]) + os.path.basename(pair[1]) for pair in all_practice_pairs]
 
 # Assign the rest of the images for the main experiment
@@ -797,12 +799,12 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(prac_blocks):
     if condition_order[block] == 0:
-        target_images = [pair[0] for pair in all_practice_pairs]
-        distractor_images = [pair[1] for pair in all_practice_pairs]
+        target_images = [pair[0] for pair in practice_pairs]
+        distractor_images = [pair[1] for pair in practice_pairs]
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = [pair[1] for pair in all_practice_pairs]
-        distractor_images = [pair[0] for pair in all_practice_pairs]
+        target_images = [pair[1] for pair in practice_pairs]
+        distractor_images = [pair[0] for pair in practice_pairs]
         target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
