@@ -16,6 +16,7 @@ import os
 import time
 import sys
 import math
+import numpy
 import numpy.random as rnd
 from PIL import Image
 import random
@@ -417,7 +418,7 @@ def display_target_info(win, target_text):
     # Display the window with the target information
     win.flip()
     # Wait for a key response (space or escape)
-    event.waitKeys(keyList=['space', 'escape'])
+    event.waitKeys(keyList=['space'])
 
 ### Function to run a trial
 def run_trial(win, target_image, distractor_image, layout_direction):
@@ -724,22 +725,33 @@ writer.writeheader()
 
 
 # %% Assignment of images for both the practice and the main experiment
-
+# 240 images --> 20 for practice
 # Randomly select 10 images per category for practice
 practice_face = random.sample(face_images, 10)
 practice_vehicle = random.sample(vehicle_images, 10)
 
-# Create pairs using face and vehicle images for practice
-practice_pairs = list(zip(practice_face, practice_vehicle))
-rnd.shuffle(practice_pairs)
+practice_pairs={'target_face': [] , 'target_vehicle': []}
 
+half = len(practice_face) // 2
+
+for target in list(practice_pairs.keys()):
+    for im_index in range(len(practice_face)):
+        matching = 0 if im_index < half else 1
+        practice_pairs[target].append({'im1name': practice_face[im_index], 'im2name': practice_vehicle[im_index], 'position': matching})
+        
 # Assign the rest of the images for the main experiment
-main_face = [img for img in face_images if img not in practice_face]
-main_vehicle = [img for img in vehicle_images if img not in practice_vehicle]
+main_face = [img for img in face_images if img not in practice_face] # 110 face
+main_vehicle = [img for img in vehicle_images if img not in practice_vehicle] # 110 vehicle
 
-# Create pairs using face and vehicle images for the main experiment
-main_pairs = list(zip(main_face, main_vehicle))
-rnd.shuffle(main_pairs)
+main_pairs={'target_face': [] , 'target_vehicle': []}
+
+half = len(main_face) // 2
+
+for target in list(main_pairs.keys()):
+    for im_index in range(len(main_face)):
+        matching = 0 if im_index < half else 1
+        main_pairs[target].append({'im1name': main_face[im_index], 'im2name': main_vehicle[im_index], 'position': matching})
+     
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -756,18 +768,13 @@ else:
 # Initialize variables to store the previous condition_order
 prev_condition_order = None
 
-# Initialize a dictionary to store the positions for each pair
-positions_dict = {}  
-
 # Loop through blocks
 for block in range(prac_blocks):
     if condition_order[block] == 0:
-        target_images = [pair[0] for pair in practice_pairs]
-        distractor_images = [pair[1] for pair in practice_pairs]
+        block_target = 'face'
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = [pair[1] for pair in practice_pairs]
-        distractor_images = [pair[0] for pair in practice_pairs]
+        block_target = 'vehicle'
         target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
@@ -775,45 +782,46 @@ for block in range(prac_blocks):
         display_target_info(win, target_text)
         prev_condition_order = condition_order[block]
     
-    # rnd.shuffle(target_images)
-    # rnd.shuffle(distractor_images)
     # Loop through trials within each block
-    for trial in range(prac_trials_per_block):
-        target_image_path = target_images[trial]
-        target_image_name = os.path.basename(target_image_path)  # Fetch the name of the displayed image
-        distractor_image_path = distractor_images[trial]
-        distractor_image_name = os.path.basename(distractor_image_path)  # Fetch the name of the displayed image
-        pair = (target_image_path, distractor_image_path)
+    for trial in range(prac_trials_per_block):    
+        if block_target == 'face':
+            target_image_path = practice_pairs['target_face'][trial]['im1name']
+            target_image_name = os.path.basename(practice_pairs['target_face'][trial]['im1name'])
+            target_pos = practice_pairs['target_face'][trial]['position']
+            distractor_image_path = practice_pairs['target_face'][trial]['im2name']
+            distractor_image_name = os.path.basename(practice_pairs['target_face'][trial]['im2name'])
+
+        else:
+            target_image_path = practice_pairs['target_vehicle'][trial]['im2name']
+            target_image_name = os.path.basename(practice_pairs['target_vehicle'][trial]['im2name'])
+            target_pos = practice_pairs['target_vehicle'][trial]['position']
+            distractor_image_path = practice_pairs['target_vehicle'][trial]['im1name']
+            distractor_image_name = os.path.basename(practice_pairs['target_face'][trial]['im1name'])
         
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
-                  
-        if pair in positions_dict:
-        # If it is, use the stored positions
-            target_position, distractor_position = positions_dict[pair]
-        else:
-            # If it's not, assign new positions and store them in the dictionary
-            if layout_direction == 'vertical':
-                if random.choice([True, False]):
-                    target_position = (0, 15/deg_per_px)  # Position on the top
-                    target_position_name = 'top'
-                else:
-                    target_position = (0, -15/deg_per_px)  # Position on the bottom
-                    target_position_name = 'bottom'
-                    
-            elif layout_direction == 'horizontal':
-                if random.choice([True, False]):
-                    target_position = (15/deg_per_px, 0)  # Position on the right
-                    target_position_name = 'right'
-                else:
-                    target_position = (-15/deg_per_px, 0)  # Position on the left
-                    target_position_name = 'left'
-    
-            target_image.pos = target_position
-            distractor_position = (-target_position[0], -target_position[1])
-            distractor_image.pos = distractor_position
-            positions_dict[pair] = (target_position, distractor_position)
+                
+        # If it's not, assign new positions and store them in the dictionary
+        if layout_direction == 'vertical':
+            if target_pos == 0:
+                target_position = (0, 15/deg_per_px)  # Position on the top
+                target_position_name = 'top'
+            else:
+                target_position = (0, -15/deg_per_px)  # Position on the bottom
+                target_position_name = 'bottom'
+                
+        elif layout_direction == 'horizontal':
+            if target_pos == 0:
+                target_position = (15/deg_per_px, 0)  # Position on the right
+                target_position_name = 'right'
+            else:
+                target_position = (-15/deg_per_px, 0)  # Position on the left
+                target_position_name = 'left'
+
+        target_image.pos = target_position
+        distractor_position = (-target_position[0], -target_position[1])
+        distractor_image.pos = distractor_position
         
         # Now we do the same for the distractor
         if target_position_name == 'top':
@@ -881,19 +889,17 @@ prev_condition_order = None
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
-        target_images = main_face
-        distractor_images = main_vehicle
+        block_target = 'face'
         target_text = instruction_dictionary['instructions.faces']
     else:
-        target_images = main_vehicle
-        distractor_images = main_face
+        block_target = 'vehicle'
         target_text = instruction_dictionary['instructions.vehicles']
     
     # Display target_text only when condition_order changes
     if condition_order[block] != prev_condition_order:
         display_target_info(win, target_text)
         prev_condition_order = condition_order[block]
-    
+        
     # Perform calibration after each block except the last one
     if not dummy_mode and block < num_blocks:
         try:
@@ -901,50 +907,47 @@ for block in range(num_blocks):
         except RuntimeError as err:
             print('ERROR:', err)
             el_tracker.exitCalibration()
-
-    rnd.shuffle(target_images)
-    rnd.shuffle(distractor_images)
-    
+            
     # Loop through trials within each block
-    for trial in range(trials_per_block):
-        target_image_path = target_images[trial]
-        target_image_name = os.path.basename(target_image_path) # Here we fetch the name of the displayed image
-        distractor_image_path = distractor_images[trial]
-        distractor_image_name = os.path.basename(distractor_image_path) # Here we fetch the name of the displayed image
-       
+    for trial in range(trials_per_block):    
+        if block_target == 'face':
+            target_image_path = main_pairs['target_face'][trial]['im1name']
+            target_image_name = os.path.basename(main_pairs['target_face'][trial]['im1name'])
+            target_pos = main_pairs['target_face'][trial]['position']
+            distractor_image_path = main_pairs['target_face'][trial]['im2name']
+            distractor_image_name = os.path.basename(main_pairs['target_face'][trial]['im2name'])
+
+        else:
+            target_image_path = main_pairs['target_vehicle'][trial]['im2name']
+            target_image_name = os.path.basename(main_pairs['target_vehicle'][trial]['im2name'])
+            target_pos = main_pairs['target_vehicle'][trial]['position']
+            distractor_image_path = main_pairs['target_vehicle'][trial]['im1name']
+            distractor_image_name = os.path.basename(main_pairs['target_face'][trial]['im1name'])
+           
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
                
-        # Initialize variables to store the image positions for target and distractor images
-        target_position = None  
-        distractor_position = None  
-        
-        if pair in positions_dict:
-        # If it is, use the stored positions
-            target_position, distractor_position = positions_dict[pair]
-        else:
-            # If it's not, assign new positions and store them in the dictionary
-            if layout_direction == 'vertical':
-                if random.choice([True, False]):
-                    target_position = (0, 15/deg_per_px)  # Position on the top
-                    target_position_name = 'top'
-                else:
-                    target_position = (0, -15/deg_per_px)  # Position on the bottom
-                    target_position_name = 'bottom'
-                    
-            elif layout_direction == 'horizontal':
-                if random.choice([True, False]):
-                    target_position = (15/deg_per_px, 0)  # Position on the right
-                    target_position_name = 'right'
-                else:
-                    target_position = (-15/deg_per_px, 0)  # Position on the left
-                    target_position_name = 'left'
-    
-            target_image.pos = target_position
-            distractor_position = (-target_position[0], -target_position[1])
-            distractor_image.pos = distractor_position
-            positions_dict[pair] = (target_position, distractor_position)
+        # If it's not, assign new positions and store them in the dictionary
+        if layout_direction == 'vertical':
+            if target_pos == 0:
+                target_position = (0, 15/deg_per_px)  # Position on the top
+                target_position_name = 'top'
+            else:
+                target_position = (0, -15/deg_per_px)  # Position on the bottom
+                target_position_name = 'bottom'
+                
+        elif layout_direction == 'horizontal':
+            if target_pos == 0:
+                target_position = (15/deg_per_px, 0)  # Position on the right
+                target_position_name = 'right'
+            else:
+                target_position = (-15/deg_per_px, 0)  # Position on the left
+                target_position_name = 'left'
+
+        target_image.pos = target_position
+        distractor_position = (-target_position[0], -target_position[1])
+        distractor_image.pos = distractor_position
         
         # Now we do the same for the distractor
         if target_position_name == 'top':
