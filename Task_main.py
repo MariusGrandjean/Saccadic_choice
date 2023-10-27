@@ -6,6 +6,7 @@ Created on Thu Aug 17 11:01:16 2023
 """
 
 # %% Package imports 
+
 from __future__ import division
 from __future__ import print_function
 
@@ -89,6 +90,7 @@ face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/P
 vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
 
 # %% Subject info
+
 # This part should be modified according to your preferences and settings
 exp_name = 'Saccadic_choice'
 exp_info = {
@@ -711,6 +713,7 @@ if not dummy_mode:
         el_tracker.exitCalibration()
 
 # %% Create a unique filename for the experiment data
+
 datapath = 'data'
 if not os.path.isdir(datapath):
     os.makedirs(datapath)
@@ -725,6 +728,7 @@ writer.writeheader()
 
 
 # %% Assignment of images for both the practice and the main experiment
+
 # 240 images --> 20 for practice and 220 for main
 
 # Randomly select 10 images per category for practice
