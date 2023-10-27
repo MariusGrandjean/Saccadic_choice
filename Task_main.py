@@ -725,33 +725,51 @@ writer.writeheader()
 
 
 # %% Assignment of images for both the practice and the main experiment
-# 240 images --> 20 for practice
+# 240 images --> 20 for practice and 220 for main
+
 # Randomly select 10 images per category for practice
 practice_face = random.sample(face_images, 10)
 practice_vehicle = random.sample(vehicle_images, 10)
 
-practice_pairs={'target_face': [] , 'target_vehicle': []}
+# Create a dictionnary to store the pairs and their positions
+practice_pairs={'target_face': [], 'target_vehicle': []}
 
-half = len(practice_face) // 2
+# defining half to pseudo-randomize the positions:
+# in target_face : (first half is 0 and other half is 1)
+# in target_vehicle : (first half is 1 and other half is 0)
+half = len(practice_face) // 2 # we are using face list as both lists are the same length
 
+# Use a loop to create the pairs and assign them a position
 for target in list(practice_pairs.keys()):
     for im_index in range(len(practice_face)):
         matching = 0 if im_index < half else 1
         practice_pairs[target].append({'im1name': practice_face[im_index], 'im2name': practice_vehicle[im_index], 'position': matching})
-        
+
+# Shuffling the order of the items in both dictionnaries
+rnd.shuffle(practice_pairs['target_face'])
+rnd.shuffle(practice_pairs['target_vehicle'])
+
 # Assign the rest of the images for the main experiment
 main_face = [img for img in face_images if img not in practice_face] # 110 face
 main_vehicle = [img for img in vehicle_images if img not in practice_vehicle] # 110 vehicle
 
-main_pairs={'target_face': [] , 'target_vehicle': []}
+# Create a dictionnary to store the pairs and their positions
+main_pairs={'target_face': [], 'target_vehicle': []}
 
+# defining half to pseudo-randomize the positions:
+# in target_face : (first half is 0 and other half is 1)
+# in target_vehicle : (first half is 1 and other half is 0)
 half = len(main_face) // 2
 
+# Use a loop to create the pairs and assign them a position
 for target in list(main_pairs.keys()):
-    for im_index in range(len(main_face)):
+    for im_index in range(len(main_face)): # we are using face list as both lists are the same length
         matching = 0 if im_index < half else 1
         main_pairs[target].append({'im1name': main_face[im_index], 'im2name': main_vehicle[im_index], 'position': matching})
-     
+
+# Shuffling the order of the items in both dictionnaries
+rnd.shuffle(main_pairs['target_face'])
+rnd.shuffle(main_pairs['target_vehicle']) 
 # %% Practice loop
 
 # Define the order of blocks (0 represents face-target, 1 represents vehicle-target)
@@ -785,18 +803,18 @@ for block in range(prac_blocks):
     # Loop through trials within each block
     for trial in range(prac_trials_per_block):    
         if block_target == 'face':
-            target_image_path = practice_pairs['target_face'][trial]['im1name']
-            target_image_name = os.path.basename(practice_pairs['target_face'][trial]['im1name'])
-            target_pos = practice_pairs['target_face'][trial]['position']
-            distractor_image_path = practice_pairs['target_face'][trial]['im2name']
-            distractor_image_name = os.path.basename(practice_pairs['target_face'][trial]['im2name'])
+            target_image_path = practice_pairs['target_face'][trial]['im1name'] # take a face image from a pair in the target_face dictionnary
+            target_image_name = os.path.basename(practice_pairs['target_face'][trial]['im1name']) # store it's name for csv file
+            target_pos = practice_pairs['target_face'][trial]['position'] # take the position assigned with the pair
+            distractor_image_path = practice_pairs['target_face'][trial]['im2name'] # take a vehicle image from a pair in the target_face dictionnary
+            distractor_image_name = os.path.basename(practice_pairs['target_face'][trial]['im2name']) # store it's name for csv file
 
         else:
-            target_image_path = practice_pairs['target_vehicle'][trial]['im2name']
-            target_image_name = os.path.basename(practice_pairs['target_vehicle'][trial]['im2name'])
-            target_pos = practice_pairs['target_vehicle'][trial]['position']
-            distractor_image_path = practice_pairs['target_vehicle'][trial]['im1name']
-            distractor_image_name = os.path.basename(practice_pairs['target_face'][trial]['im1name'])
+            target_image_path = practice_pairs['target_vehicle'][trial]['im2name'] # take a vehicle image from a pair in the target_vehicle dictionnary
+            target_image_name = os.path.basename(practice_pairs['target_vehicle'][trial]['im2name']) # store it's name for csv file
+            target_pos = practice_pairs['target_vehicle'][trial]['position'] # take the position assigned with the pair
+            distractor_image_path = practice_pairs['target_vehicle'][trial]['im1name'] # take a face image from a pair in the target_vehicle dictionnary
+            distractor_image_name = os.path.basename(practice_pairs['target_vehicle'][trial]['im1name']) # store it's name for csv file
         
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
@@ -820,7 +838,7 @@ for block in range(prac_blocks):
                 target_position_name = 'left'
 
         target_image.pos = target_position
-        distractor_position = (-target_position[0], -target_position[1])
+        distractor_position = (-target_position[0], -target_position[1]) # opposite direction than the target
         distractor_image.pos = distractor_position
         
         # Now we do the same for the distractor
@@ -886,6 +904,13 @@ else:
 # Initialize variables to store the previous condition_order
 prev_condition_order = None
 
+# Initialize indexes to track the number of the drawn image
+# we are doing this because otherwise the loop will always 
+# go back to the beginning of the dictonnary, repeating twice the same image 
+# with the same order
+face_trial = 0
+vehicle_trial = 0
+
 # Loop through blocks
 for block in range(num_blocks):
     if condition_order[block] == 0:
@@ -907,23 +932,25 @@ for block in range(num_blocks):
         except RuntimeError as err:
             print('ERROR:', err)
             el_tracker.exitCalibration()
-            
+
     # Loop through trials within each block
-    for trial in range(trials_per_block):    
+    for trial in range(trials_per_block):
         if block_target == 'face':
-            target_image_path = main_pairs['target_face'][trial]['im1name']
-            target_image_name = os.path.basename(main_pairs['target_face'][trial]['im1name'])
-            target_pos = main_pairs['target_face'][trial]['position']
-            distractor_image_path = main_pairs['target_face'][trial]['im2name']
-            distractor_image_name = os.path.basename(main_pairs['target_face'][trial]['im2name'])
+            target_image_path = main_pairs['target_face'][face_trial]['im1name'] # take a face image from a pair in the target_face dictionnary
+            target_image_name = os.path.basename(main_pairs['target_face'][face_trial]['im1name']) # store it's name for csv file
+            target_pos = main_pairs['target_face'][face_trial]['position'] # take the position assigned with the pair
+            distractor_image_path = main_pairs['target_face'][face_trial]['im2name'] # take a vehicle image from a pair in the target_face dictionnary
+            distractor_image_name = os.path.basename(main_pairs['target_face'][face_trial]['im2name']) # store it's name for csv file
+            face_trial += 1 # increase the index number by 1
 
         else:
-            target_image_path = main_pairs['target_vehicle'][trial]['im2name']
-            target_image_name = os.path.basename(main_pairs['target_vehicle'][trial]['im2name'])
-            target_pos = main_pairs['target_vehicle'][trial]['position']
-            distractor_image_path = main_pairs['target_vehicle'][trial]['im1name']
-            distractor_image_name = os.path.basename(main_pairs['target_face'][trial]['im1name'])
-           
+            target_image_path = main_pairs['target_vehicle'][vehicle_trial]['im2name'] # take a vehicle image from a pair in the target_vehicle dictionnary
+            target_image_name = os.path.basename(main_pairs['target_vehicle'][vehicle_trial]['im2name']) # store it's name for csv file
+            target_pos = main_pairs['target_vehicle'][vehicle_trial]['position'] # take the position assign with the pair
+            distractor_image_path = main_pairs['target_vehicle'][vehicle_trial]['im1name'] # take a face image from a pair in the target_vehicle dictionnary
+            distractor_image_name = os.path.basename(main_pairs['target_vehicle'][vehicle_trial]['im1name']) # store it's name for csv file
+            vehicle_trial += 1 # increase the index number by 1
+            
         # Draw the images
         target_image = visual.ImageStim(win, image=target_image_path, size=(real_hori_pix, real_vert_pix))
         distractor_image = visual.ImageStim(win, image=distractor_image_path, size=(real_hori_pix, real_vert_pix))
@@ -946,7 +973,7 @@ for block in range(num_blocks):
                 target_position_name = 'left'
 
         target_image.pos = target_position
-        distractor_position = (-target_position[0], -target_position[1])
+        distractor_position = (-target_position[0], -target_position[1]) # opposite direction than the target
         distractor_image.pos = distractor_position
         
         # Now we do the same for the distractor
