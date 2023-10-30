@@ -234,17 +234,14 @@ w = float(exp_info['screenwidth(cm)'])
 d = float(exp_info['screendistance(cm)'])
 deg_per_px = degrees(atan2(.5 * w, d)) / (.5 * horipix)
 
-# how many rgb values do we lower the brightness
-reduce=50
-
 # the candela / metersquare value
-cdm2 = (128-reduce)/255*100
+# cdm2 = (128-reduce)/255*100
 
 # %% Open a window
 win = visual.Window(monitor = mon, 
                     size = scrsize,
                     colorSpace = "rgb255",
-                    color= [128 - reduce, 128 - reduce, 128 - reduce],
+                    color= [104.2, 104.2, 104.2], # luminance of the stimuli
                     units='pix',
                     fullscr=True,
                     allowStencil=True,
