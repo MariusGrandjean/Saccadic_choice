@@ -205,8 +205,8 @@ el_tracker.sendCommand("link_sample_data = %s" % link_sample_flags)
 
 # Setting a smaller calibration area (use only if your screen is bigger than tracking area)
 el_tracker.sendCommand("generate_default_targets = NO")
-el_tracker.sendCommand("calibration_area_proportion = 0.59 0.46")
-el_tracker.sendCommand("validation_area_proportion = 0.59 0.46")
+el_tracker.sendCommand("calibration_area_proportion = 0.35 0.46")
+el_tracker.sendCommand("validation_area_proportion = 0.35 0.46")
 
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
@@ -295,11 +295,11 @@ pylink.openGraphicsEx(genv)
 
 # %% Display instructions
 instructions = visual.TextStim(win=win,
-    pos=[0,0], 
-    color= 'white',
-    height=1/deg_per_px,
-    wrapWidth=horipix/2,
-    alignHoriz='center')
+    pos = [0,0], 
+    color = 'white',
+    height = 1/deg_per_px,
+    wrapWidth = horipix/2,
+    alignHoriz = 'center')
 
 instructions.text = instruction_dictionary['instructions.text']
 instructions.draw()
@@ -359,27 +359,6 @@ instructions.draw()
 
 win.flip() 
 keys = event.waitKeys(keyList=['space','escape'])
-# %% Preparing the experiment
-
-fixation_cross = visual.Circle(win, 
-                             fillColor='white',
-                             lineColor='white',
-                             radius=0.5/deg_per_px,  
-                             pos=(0, 0))
-
-# Number of blocks and trials for practice
-prac_blocks = 2
-prac_trials_per_block = 10
-
-# Number of blocks and trials per block
-num_blocks = 4
-trials_per_block = 55
-
-# Initialize trial_index before the first block
-trial_index = 0
-
-# Set the desired layout direction
-layout_direction = exp_info['Layout']  
 
 # %% Calculation of image_size
 
@@ -406,12 +385,35 @@ real_vert = dd * math.tan(math.radians(alphaH / 2))  # image height in cm = 2dta
 real_hori_pix = round(real_hori * screenWidthPix / screenWidthCm)  # image width in pixels
 real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image height in pixels
 
+# %% Preparing the experiment
+
+fixation_cross = visual.Circle(win,
+                             colorSpace = "rgb255",
+                             fillColor=[10, 10, 10],
+                             lineColor=[10, 10, 10],
+                             radius=0.25/deg_per_px,  
+                             pos=(0, 0))
+
+# Number of blocks and trials for practice
+prac_blocks = 2
+prac_trials_per_block = 10
+
+# Number of blocks and trials per block
+num_blocks = 4
+trials_per_block = 55
+
+# Initialize trial_index before the first block
+trial_index = 0
+
+# Set the desired layout direction
+layout_direction = exp_info['Layout']  
+
 # %% Homemade functions
 
 ### Function to display target information and wait for key press
 def display_target_info(win, target_text):
     # Create a visual stimulus for displaying target information
-    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1/deg_per_px,wrapWidth=horipix/2,pos=(0, 0))
+    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1/deg_per_px,wrapWidth = horipix/2,pos=(0, 0))
     # Draw the target information on the window
     target_info_text.draw()
     # Display the window with the target information
