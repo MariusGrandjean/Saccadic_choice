@@ -2,7 +2,7 @@ This repository is for saccadic choice task experiments as explained in Crouzet 
 
 The first prompt will ask informations to create an EDF file.
 
-The second prompt will ask you for information regarding the subject (age, etc.) and your monitor (refresh rate, size). It is important to fill these in with the correct information, because stimulus presentation time is defined using the refresh rate of the monitor, and stimulus size is defined by the screen size when the observer sits 57 cms away from the screen.
+The second prompt will ask you for information regarding the subject (age, etc.) and your monitor (refresh rate, size). It is important to fill these in with the correct information, because stimulus presentation time is defined using the refresh rate of the monitor, and stimulus size is defined by the screen size when the observer sits 85 cms away from the screen.
 
 ![image](https://github.com/MariusGrandjean/Saccadic_choice/assets/114002944/b2cca93e-d9b0-4125-8868-b8b882693757)
 
