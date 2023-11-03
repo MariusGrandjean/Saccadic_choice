@@ -14,4 +14,5 @@ This experiment is designed for two sessions. One in which the stimuli are prese
 All the experimental stimuli can be found here : https://osf.io/xk57b/
 
 This experiment is also designed to work with two additional tasks :
-https://github.com/MariusGrandjean/Face_Tilt
+1. https://github.com/MariusGrandjean/Face_Tilt
+2. https://github.com/MariusGrandjean/Radial_Bias
