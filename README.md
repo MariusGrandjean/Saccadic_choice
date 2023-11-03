@@ -12,3 +12,6 @@ This experiment is designed for two sessions. One in which the stimuli are prese
 ![image](https://github.com/MariusGrandjean/Saccadic_choice/assets/114002944/bb3cdf68-6bf2-476c-9d6c-f6eef0e9da60)
 
 All the experimental stimuli can be found here : https://osf.io/xk57b/
+
+This experiment is also designed to work with two additional tasks :
+https://github.com/MariusGrandjean/Face_Tilt
