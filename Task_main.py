@@ -389,8 +389,8 @@ real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image heigh
 
 fixation_cross = visual.Circle(win,
                              colorSpace = "rgb255",
-                             fillColor=[10, 10, 10],
-                             lineColor=[10, 10, 10],
+                             fillColor=[225, 225, 225],
+                             lineColor=[225, 225, 225],
                              radius=0.25/deg_per_px,  
                              pos=(0, 0))
 
