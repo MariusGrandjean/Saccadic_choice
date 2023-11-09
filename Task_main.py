@@ -124,14 +124,14 @@ instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez v
                           'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
                           'instructions.text4' : "Nous allons d'abord commencer par un entrainement. \n\n Appuyez sur ESPACE pour commencer.",
                           'instructions.text5' : "Bravo!\nVous avez terminé l'entrainement.\nVous allez maintenant commencer l'étude.\n\nAppuyez sur ESPACE pour commencer l'étude",
-                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
-                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour commencer.",
+                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour lancer la calibration.",
+                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour lancer la calibration.",
                           'timertext.text':"Prêt",
                           'blocktext1.text': "Vous pouvez faire une courte pause avant le prochain bloc. \n\nVeuillez garder votre tête immobile et bien positionée sur la mentionnière. \n\nVous pourrez appuyer sur ESPACE pour continuer après ",
                           'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:",
                           'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESCAPE pour arrêter la tâche prématurément.\n",
                           'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'entrainement.",
-                          'calibration.text3': "\n Maintenant, appuyez sur ENTER trois fois pour calibrer l'eyetracker."}
+                          'calibration.text3': "\n Maintenant, appuyez sur ENTER quatre fois pour calibrer l'eyetracker."}
 
 # %% Connect to the EyeLink Host PC
 
