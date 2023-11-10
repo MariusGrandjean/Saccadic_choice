@@ -85,9 +85,9 @@ if not os.path.exists(session_folder):
 
 # %% Image Paths
 
-image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final"
-face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*faces*.jpg")
-vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/Ph.D/Projet/Projet - Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
+image_directory = "C:/Users/Marius/Dropbox/Travail/UCLouvain/PhD/Projet/Projet-Saccades/ChoixSaccadique/stimuli_Final"
+face_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/PhD/Projet/Projet-Saccades/ChoixSaccadique/stimuli_Final/*faces*.jpg")
+vehicle_images = glob.glob("C:/Users/Marius/Dropbox/Travail/UCLouvain/PhD/Projet/Projet-Saccades/ChoixSaccadique/stimuli_Final/*vehicule*.jpg")
 
 # %% Subject info
 
@@ -444,7 +444,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     
     # drift correction
     # Perform drift correction every 10 trials
-    if trial_index % 10 == 0 and trial_index != 50 :
+    if trial_index % 10 == 0:
         # Skip drift-check if running the script in Dummy Mode
         while not dummy_mode:
             # terminate the task if no longer connected to the tracker or
@@ -453,17 +453,16 @@ def run_trial(win, target_image, distractor_image, layout_direction):
                 terminate_task()
                 return pylink.ABORT_EXPT
 
-            # drift-correction and re-do camera setup if ESCAPE is pressed
+            # drift-check and re-do camera setup if ESCAPE is pressed
             try:
                 error = pylink.getEYELINK().doDriftCorrect(int(horipix/2.0),
-                                                           int(vertpix/2.0), 1, 0) #0 if successful
-                if error != 27: #27 = escape key pressed at tracker to enter tracker setup menu
-                    return
-                else:
-                    pylink.getEYELINK().doTrackerSetup() #switches the EyeLink tracker to the setup menu
+                                                           int(vertpix/2.0), 1, 1)
+                # break following a success drift-check
+                if error is not pylink.ESC_KEY:
+                    break
             except:
-                pylink.getEYELINK().doTrackerSetup()
-                
+                pass
+            
     # put tracker in idle/offline mode before recording
     el_tracker.setOfflineMode()
 
