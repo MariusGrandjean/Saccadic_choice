@@ -716,7 +716,7 @@ if not dummy_mode:
 datapath = 'data'
 if not os.path.isdir(datapath):
     os.makedirs(datapath)
-data_fname = f"{exp_info['participant']}_{exp_info['age']}_{exp_info['gender'][0]}_{exp_info['date']}.csv"
+data_fname = f"{exp_info['participant']}_{exp_info['Layout']}_{exp_info['date']}.csv"
 data_fname = os.path.join(datapath, data_fname)
 
 # Open the file for writing and create a CSV writer with the specified fieldnames
