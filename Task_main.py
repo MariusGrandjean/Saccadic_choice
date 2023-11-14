@@ -447,12 +447,6 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     if trial_index % 10 == 0:
         # Skip drift-check if running the script in Dummy Mode
         while not dummy_mode:
-            # terminate the task if no longer connected to the tracker or
-            # user pressed Ctrl-C to terminate the task
-            if (not el_tracker.isConnected()) or el_tracker.breakPressed():
-                terminate_task()
-                return pylink.ABORT_EXPT
-
             # drift-check and re-do camera setup if ESCAPE is pressed
             try:
                 error = pylink.getEYELINK().doDriftCorrect(int(horipix/2.0),
