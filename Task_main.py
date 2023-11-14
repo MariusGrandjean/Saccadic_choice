@@ -205,8 +205,8 @@ el_tracker.sendCommand("link_sample_data = %s" % link_sample_flags)
 
 # Setting a smaller calibration area (use only if your screen is bigger than tracking area)
 el_tracker.sendCommand("generate_default_targets = NO")
-el_tracker.sendCommand("calibration_area_proportion = 0.35 0.46")
-el_tracker.sendCommand("validation_area_proportion = 0.35 0.46")
+el_tracker.sendCommand("calibration_area_proportion = 0.38 0.49")
+el_tracker.sendCommand("validation_area_proportion = 0.38 0.49")
 
 # Optional tracking parameters
 # Choose a calibration type, H3, HV3, HV5, HV13 (HV = horizontal/vertical),
