@@ -100,7 +100,7 @@ exp_info = {
         'age':'',
         'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
-        'desired_visual_angle' : '11', 
+        'desired_visual_angle' : '8', 
         'screenwidth(cm)': '47', 
         'screendistance(cm)': '60', 
         'screenresolutionhori(pixels)': '1920', 
@@ -120,18 +120,21 @@ exp_info['exp_name'] = exp_name
 # %% Creation of a dictonary with all the instruction
 
 instruction_dictionary = {'instructions.text' : "Dans cette étude, vous allez voir deux images présentées simultanément d'une part et d'autre de l'écran.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
-                          'instructions.text2': "Votre tâche sera d'orienter votre regard LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions.text2' : "Votre tâche sera d'orienter votre regard LE PLUS VITE POSSIBLE vers l'image qui sera définie au préalable comme cible.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
                           'instructions.text3' : "Les cibles seront soit des VISAGES soit des VEHICULES.\n\n Appuyez sur ESPACE pour voir la suite des instructions.",
                           'instructions.text4' : "Nous allons d'abord commencer par un entrainement. \n\n Appuyez sur ESPACE pour commencer.",
                           'instructions.text5' : "Bravo!\nVous avez terminé l'entrainement.\nVous allez maintenant commencer l'étude.\n\nAppuyez sur ESPACE pour commencer l'étude",
-                          'instructions.faces' : "Durant les prochains blocs, votre tâche sera de regarder les VISAGES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour lancer la calibration.",
-                          'instructions.vehicles' : "Durant les prochains blocs, votre tâche sera de regarder les VEHICULES.\n\n Fixez bien le rond au centre entre les essais. \n\n Appuyez sur ESPACE pour lancer la calibration.",
-                          'timertext.text':"Prêt",
-                          'blocktext1.text': "Vous pouvez faire une courte pause avant le prochain bloc. \n\nVeuillez garder votre tête immobile et bien positionée sur la mentionnière. \n\nVous pourrez appuyer sur ESPACE pour continuer après ",
-                          'blocktext2.text':" secondes lorsque vous serez prêt. \n Bloc:",
-                          'calibration.text1': "Dans cette étude, vous pouvez appuyer sur ESCAPE pour arrêter la tâche prématurément.\n",
-                          'calibration.text2': "\n Maintenant, appuyez sur ENTER pour commencer l'entrainement.",
-                          'calibration.text3': "\n Maintenant, appuyez sur ENTER quatre fois pour calibrer l'eyetracker."}
+                          'instructions.text6' : "Avant de continuer, veuillez vous assurez que la croix est bien en face de vous.",
+                          'instructions.text7' : "Appuyez sur ESPACE pour voir la suite des instructions.",
+                          'instructions_practice.faces' : "Dans ce bloc, votre tâche est de regarder les VISAGES.\n\n Veuillez fixer le ROND au centre entre les essais et garder votre tête IMMOBILE et bien positionée sur la mentionnière.\n\n Appuyez sur ESPACE pour commencer.",
+                          'instructions_practice.vehicles' : "Dans ce bloc, votre tâche est de regarder les VEHICULES.\n\n Veuillez fixer le ROND au centre entre les essais et garder votre tête IMMOBILE et bien positionée sur la mentionnière.\n\n Appuyez sur ESPACE pour commencer.",
+                          'instructions.faces' : "Dans ce bloc, votre tâche est de regarder les VISAGES.\n\n Veuillez fixer le ROND au centre entre les essais et garder votre tête IMMOBILE et bien positionée sur la mentionnière.\n\n Appuyez sur ESPACE pour lancer la calibration.",
+                          'instructions.vehicles' : "Dans ce bloc, votre tâche est de regarder les VEHICULES.\n\n Veuillez fixer le ROND au centre entre les essais et garder votre tête IMMOBILE et bien positionée sur la mentionnière.\n\n Appuyez sur ESPACE pour lancer la calibration.",
+                          'timertext.text' : "Prêt",
+                          'blocktext1.text' : "Vous pouvez faire une courte pause avant le prochain bloc.\n\nVous pourrez appuyer sur ESPACE pour continuer après ",
+                          'blocktext2.text' : "secondes lorsque vous serez prêt. \n\n Bloc:",
+                          'calibration.text2' : "\n Maintenant, appuyez sur ENTER pour commencer l'entrainement.",
+                          'calibration.text3' : "\n Maintenant, appuyez sur ENTER quatre fois pour calibrer l'eyetracker."}
 
 # %% Connect to the EyeLink Host PC
 
@@ -346,6 +349,35 @@ image_stim.draw()
 win.flip() 
 keys = event.waitKeys(keyList=['space','escape'])
 
+# Adding fixation cross the verify that the participant is looking at the center of the screen
+fixation_cross = visual.TextStim(win,
+                                 text = "+",
+                                 colorSpace = "rgb255",
+                                 color=[225, 225, 225],
+                                 height=2/deg_per_px,  
+                                 pos=(0, 0))
+fixation_cross.draw()
+
+instructions = visual.TextStim(win=win,
+    pos=[0/deg_per_px, 5/deg_per_px], 
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2)
+
+instructions.text = instruction_dictionary['instructions.text6']
+instructions.draw()
+
+instructions_2 = visual.TextStim(win=win,
+    pos=[0/deg_per_px, -5/deg_per_px], 
+    color= 'white',
+    height=1/deg_per_px,
+    wrapWidth=horipix/2)
+
+instructions_2.text = instruction_dictionary['instructions.text7']
+instructions_2.draw()
+
+win.flip() 
+keys = event.waitKeys(keyList=['space','escape'])
 # Addig other instructions
 instructions = visual.TextStim(win=win,
     pos=[0,0], 
@@ -387,7 +419,7 @@ real_vert_pix = round(real_vert * screenWidthPix / screenWidthCm)  # image heigh
 
 # %% Preparing the experiment
 
-fixation_cross = visual.Circle(win,
+fixation_circle = visual.Circle(win,
                              colorSpace = "rgb255",
                              fillColor=[225, 225, 225],
                              lineColor=[225, 225, 225],
@@ -488,7 +520,7 @@ def run_trial(win, target_image, distractor_image, layout_direction):
     ## Beginning of the actual experiment 
     # 1. Generate a random fixation duration between 0.8 and 1.6 seconds
     fixation_duration = rnd.uniform(0.8, 1.6) 
-    fixation_cross.draw() # Display the fixation cross
+    fixation_circle.draw() # Display the fixation cross
     win.flip()
     el_tracker.sendMessage('FIXATION_DISPLAY %d' )
     core.wait(fixation_duration) # Wait for the fixation duration to pass
@@ -564,7 +596,7 @@ def block_break(block_no, totalblocks, timershort, timerlong):
     timertext = visual.TextStim(
         win=win,
         height=1/deg_per_px,
-        pos=[0, -6/deg_per_px],
+        pos=[0, -7/deg_per_px],
         alignHoriz='center',
         text=instruction_dictionary['timertext.text'])
     
@@ -688,12 +720,11 @@ def abort_trial():
 # %% Start calibration
 
 # Set up the camera and calibrate the tracker
-task_msg = instruction_dictionary['calibration.text1']
 
 if dummy_mode:
-    task_msg = task_msg + instruction_dictionary['calibration.text2']
+    task_msg = instruction_dictionary['calibration.text2']
 else:
-    task_msg = task_msg + instruction_dictionary['calibration.text3']
+    task_msg = instruction_dictionary['calibration.text3']
 show_msg(win, task_msg)
 
 # skip this step if running the script in Dummy Mode
@@ -786,15 +817,18 @@ prev_condition_order = None
 for block in range(prac_blocks):
     if condition_order[block] == 0:
         block_target = 'face'
-        target_text = instruction_dictionary['instructions.faces']
+        target_text = instruction_dictionary['instructions_practice.faces']
     else:
         block_target = 'vehicle'
-        target_text = instruction_dictionary['instructions.vehicles']
+        target_text = instruction_dictionary['instructions_practice.vehicles']
     
-    # Display target_text only when condition_order changes
-    if condition_order[block] != prev_condition_order:
-        display_target_info(win, target_text)
-        prev_condition_order = condition_order[block]
+    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1/deg_per_px,wrapWidth = horipix/2,pos=(0, 0))
+    # Draw the target information on the window
+    target_info_text.draw()
+    # Display the window with the target information
+    win.flip()
+    # Wait for a key response (space or escape)
+    event.waitKeys(keyList=['space'])
     
     # Loop through trials within each block
     for trial in range(prac_trials_per_block):    
@@ -916,10 +950,13 @@ for block in range(num_blocks):
         block_target = 'vehicle'
         target_text = instruction_dictionary['instructions.vehicles']
     
-    # Display target_text only when condition_order changes
-    if condition_order[block] != prev_condition_order:
-        display_target_info(win, target_text)
-        prev_condition_order = condition_order[block]
+    target_info_text = visual.TextStim(win, text=target_text, color='white', height=1/deg_per_px,wrapWidth = horipix/2,pos=(0, 0))
+    # Draw the target information on the window
+    target_info_text.draw()
+    # Display the window with the target information
+    win.flip()
+    # Wait for a key response (space or escape)
+    event.waitKeys(keyList=['space'])
         
     # Perform calibration after each block except the last one
     if not dummy_mode and block < num_blocks:
