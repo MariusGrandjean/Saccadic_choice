@@ -10,7 +10,7 @@ The second prompt will ask you for information regarding the subject (age, etc.)
 
 This experiment is designed for two sessions. One in which the stimuli are presented horizontally and the other in which they are displayed vertically. The task is divided in two conditions : one condition for which the targets are human faces (and the distractors are vehicle images) and the other one for which the targets are images containing vehicles (the distractors are human face images). Participants have to make a saccade as fast as possible towards the target image.
 
-If you want to run the experiment without record the eye movements, you have to turn "Dummy_mode" on "TRUE".
+If you want to run the experiment without recording the eye movements, you have to turn "Dummy_mode" on "TRUE".
 
 ![image](https://github.com/MariusGrandjean/Saccadic_choice/assets/114002944/7edff7d4-5e77-4958-84b2-72fe9078d850)
 
