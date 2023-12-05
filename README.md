@@ -4,7 +4,7 @@ The first prompt will ask informations to create an EDF file.
 
 ![image](https://github.com/MariusGrandjean/Saccadic_choice/assets/114002944/a2a74c8b-fd32-4372-97f2-814f30db5cfd)
 
-The second prompt will ask you for information regarding the subject (age, etc.) and your monitor (refresh rate, size). It is important to fill these in with the correct information, because stimulus presentation time is defined using the refresh rate of the monitor, and stimulus size is defined by the screen size when the observer sits 85 cms away from the screen.
+The second prompt will ask you for information regarding the subject (age, etc.) and your monitor (refresh rate, size). It is important to fill these in with the correct information, because stimulus presentation time is defined using the refresh rate of the monitor, and stimulus size is defined by the screen size and the distance at which the observer sits away from the screen.
 
 ![image](https://github.com/MariusGrandjean/Saccadic_choice/assets/114002944/285cca3a-acd3-4111-aa64-4b2f6abedecd)
 
