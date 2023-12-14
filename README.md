@@ -1,4 +1,4 @@
-This repository is for saccadic choice task experiments as explained in Crouzet et al. (2010) and Kauffmann et al. (2019).
+This repository is for a saccadic choice task experiment using a similar design as in Crouzet et al. (2010) and Kauffmann et al. (2019). The only particularity is that we are also displaying the stimuli along the vertical axis.
 
 The first prompt will ask informations to create an EDF file.
 
