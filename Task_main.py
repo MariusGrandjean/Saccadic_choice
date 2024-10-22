@@ -101,11 +101,11 @@ exp_info = {
         'left-handed':False,
         'Layout' : ('horizontal', 'vertical'),
         'desired_visual_angle' : '8', 
-        'screenwidth(cm)': '47', 
-        'screendistance(cm)': '60', 
-        'screenresolutionhori(pixels)': '1920', 
-        'screenresolutionvert(pixels)': '1080', 
-        'refreshrate(hz)': '165'} 
+        'screenwidth(cm)': '209,6', 
+        'screendistance(cm)': '90', 
+        'screenresolutionhori(pixels)': '3840', 
+        'screenresolutionvert(pixels)': '2160', 
+        'refreshrate(hz)': '59'} 
 
 dlg = gui.DlgFromDict(dictionary=exp_info, title=exp_name)
     
@@ -263,7 +263,7 @@ el_tracker.sendCommand(el_coords)
 # Write a DISPLAY_COORDS message to the EDF file
 # Data Viewer needs this piece of info for proper visualization, see Data
 # Viewer User Manual, "Protocol for EyeLink Data to Viewer Integration"
-dv_coords = "DISPLAY_COORDS  0 0 %d %d" % (horipix - 1, vertpix - 1)
+dv_coords = "DISPLAY_COORDS = 0 0 %d %d" % (horipix - 1, vertpix - 1)
 el_tracker.sendMessage(dv_coords)
 
 # Configure a graphics environment (genv) for tracker calibration
