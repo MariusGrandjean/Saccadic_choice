@@ -1,0 +1,111 @@
+---
+title: "1. Formating"
+output: html_document
+date: "2024-10-24"
+fig_width: 6 
+fig_height: 10 
+---
+
+This is the first step of the data analysis pipeline. 
+
+In this code we run basic statistics about our sample and we add new variables to the data file.
+
+1. We begin by loading the required packages.
+
+```{r packages, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(openxlsx)
+library(lme4)
+library(lmerTest)
+library(stats)
+library(emmeans)
+library(tidyboot)
+library(faintr)
+library(brms)
+library(stringr)
+library(dabestr)
+library(ez)
+library(MBESS)
+```
+
+2. We compute basic statistics about the sample for the method section.
+
+```{r Sample, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+data_participants <- "C:/Users/grandjeamari/Documents/Travail/UCLouvain/PhD/Projet/Projet-Saccades/Miscellaneous/Infos_Participants_ET.xlsx"
+data_participants <- read_excel(data_participants)
+
+# Age of the subjects
+data_participants %>%
+  summarise(mean_Age = mean(Age, na.rm = TRUE),
+            sd_Age = sd(Age, na.rm = TRUE))
+
+# Number of women
+data_participants %>%
+  summarise(Women_Count = sum(Genre == "Femme", na.rm = TRUE))
+
+# Handedness of the participants
+data_participants %>%
+  summarise(`Right-Handed_Count` = sum(str_detect(Latéralité, "^D"), na.rm = TRUE))
+
+# frACT 
+data_participants %>%
+  filter(!is.na(`frACT (Log)`)) %>%
+  separate(`frACT (Log)`, into = c("value_logmar", "dummy"), sep = ", ") %>%
+  mutate(
+    value_logmar = as.numeric(gsub("[()]", "", value_logmar)),
+  ) %>%
+  summarise(
+    mean_logmar = mean(value_logmar, na.rm = TRUE),
+    sd_logmar = sd(value_logmar, na.rm = TRUE))
+
+# Benton
+data_participants %>% 
+  mutate(Benton = as.numeric(Benton)) %>% 
+  summarise(mean_benton = mean(Benton, na.rm = TRUE),
+            sd_benton = sd(Benton, na.rm = TRUE))
+
+```
+
+
+3. Now, we fetch the data and we create new variables that will allow us to assess whether the saccades were accurate.
+The datafile is an excel sheet obtained after assembling all the edf files together via Matlab.
+
+```{r Formating, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+
+#### Specify the path to your Excel file 
+excel_file5 <- "C:/Users/grandjeamari/Documents/Travail/UCLouvain/PhD/Projet/Projet-Saccades/Analysis/Data/Eyelink/Data_50.xlsx"
+
+# Read the Excel data into a data frame
+excel_data <- read_excel(excel_file5)
+
+# Create a new variable to write the position of the target
+excel_data <- excel_data %>%
+  mutate(correct_location = case_when(
+    grepl("hori", tolower(Subjects)) ~ ifelse(Target_LocationX < 0, "left", "right"),
+    grepl("vert", tolower(Subjects)) ~ ifelse(Target_LocationY < 0, "down", "up"),
+    TRUE ~ NA_character_
+  ))
+
+# Create a new variable to check if the saccade was accurate
+excel_data <- excel_data %>%
+  mutate(Accuracy = case_when(
+    grepl("hori", tolower(Subjects)) & correct_location == HorizSaccDir1 ~ 1,
+    grepl("vert", tolower(Subjects)) & correct_location == VertSaccDir1 ~ 1,
+    TRUE ~ 0
+  ))
+
+#### Create a new file with the added variables 
+
+# Specify the file path for the new Excel file
+output_excel_file <- "C:/Users/grandjeamari/Documents/Travail/UCLouvain/PhD/Projet/Projet-Saccades/Analysis/Data/Eyelink/Output_50.xlsx"
+
+# Write the dataframe to an Excel file
+write.xlsx(excel_data, file = output_excel_file, sheetName = "Sheet1", row.names = FALSE)
+
+```
+
+--> Once all of this is done, we are good to go to step number 2.

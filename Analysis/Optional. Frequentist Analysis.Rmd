@@ -1,0 +1,248 @@
+---
+title: "Optional. Frequentist Analysis"
+output: html_document
+date: "2024-11-21"
+fig_width: 6 
+fig_height: 10 
+---
+
+This step is optional.
+
+In this code we will model the data using frequentists GLMMs. 
+
+This won't be reported in the paper as we are more interested in using bayesian modelling (see file number 4). However, it allows to play a bit more with our data
+
+1. We begin by loading the required packages .
+```{r packages, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(openxlsx)
+library(lme4)
+library(lmerTest)
+library(stats)
+library(emmeans)
+library(tidyboot)
+library(faintr)
+library(brms)
+library(stringr)
+library(dabestr)
+library(ez)
+library(MBESS)
+```
+
+2. We load the data
+
+```{r loading data, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+base::load("clean_data.rda")
+
+```
+
+3. We write different models of varying complexity to find the one with the best fitting.
+
+We use the BIC to compare models. The lower the better.
+
+```{r writing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Run the model and `stats::anova(model)` and look at the highest interaction terms. 
+# If not significant, prune the model. Until the highest interaction terms are significant. 
+# This way we end up with the simplest model.
+
+### First model with full interaction effects ###
+M1 <- lmer(Latency1 ~ 1 + Target * meridian + (1 + Target + meridian|subject), 
+           data = clean_data)
+
+MA <- lmer(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject), 
+           data = clean_data) 
+
+MA.1 <- lmer(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject) + (1 + correct_location|subject), 
+             data = clean_data)
+
+M1.1 <- lmer(Latency1 ~ 1 + Target * meridian + (1 + Target|subject), 
+           data = clean_data)
+
+M1.2 <- lmer(Latency1 ~ 1 + Target * meridian + (1 + meridian|subject), 
+           data = clean_data)
+
+M1.3 <- lmer(Latency1 ~ 1 + Target * meridian + (1|subject), 
+           data = clean_data)
+
+# Bayesian information criterion (BIC)
+BIC(M1)
+BIC(MA)
+BIC(MA.1)
+BIC(M1.1)
+BIC(M1.2)
+BIC(M1.3)
+
+# Check which variables are sig
+stats::anova(M1)
+stats::anova(M1.1)
+stats::anova(M1.2)
+stats::anova(M1.3)
+
+# Explore the outcome
+summary(M1)
+summary(M1.1)
+summary(M1.2)
+summary(M1.3)
+
+### Second model with main effects ###
+M2 <- lmer(Latency1 ~ 1 + Target + meridian + (1 + Target * meridian|subject), 
+           data = clean_data) 
+
+M2.1 <- lmer(Latency1 ~ 1 + Target + meridian + (1 + Target|subject), 
+           data = clean_data)
+
+M2.2 <- lmer(Latency1 ~ 1 + Target + meridian + (1 + meridian|subject), 
+           data = clean_data)
+
+M2.3 <- lmer(Latency1 ~ 1 + Target + meridian + (1|subject), 
+           data = clean_data)
+
+# Bayesian information criterion (BIC)
+BIC(M2)
+BIC(M2.1)
+BIC(M2.2)
+BIC(M2.3)
+
+# Check which variables are sig
+stats::anova(M2)
+stats::anova(M2.1)
+stats::anova(M2.2)
+stats::anova(M2.3)
+
+# Explore the outcome
+summary(M2)
+summary(M2.1)
+summary(M2.2)
+summary(M2.3)
+
+### Third model with one main effect ###
+M3 <- lmer(Latency1 ~ 1 + Target + (1 + Target|subject), 
+           data = clean_data)
+
+M3.1 <- lmer(Latency1 ~ 1 + Target + (1|subject), 
+           data = clean_data)
+
+# Bayesian information criterion (BIC)
+BIC(M3)
+BIC(M3.1)
+
+# Check which variables are sig
+stats::anova(M3)
+stats::anova(M3.1)
+
+# Explore the outcome
+summary(M3)
+summary(M3.1)
+
+### Fourth model with one main effect ###
+M4 <- lmer(Latency1 ~ 1 + meridian + (1 + meridian|subject), 
+           data = clean_data)
+
+M4.1 <- lmer(Latency1 ~ 1 + meridian + (1|subject), 
+           data = clean_data)
+
+# Bayesian information criterion (BIC)
+BIC(M4)
+BIC(M4.1)
+
+# Check which variables are sig
+stats::anova(M4)
+stats::anova(M4.1)
+
+# Explore the outcome
+summary(M4)
+summary(M4.1)
+
+```
+
+4. We predict data based on the model that got the lowest BIC.
+
+We then create graphs
+
+```{r m, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Calculate predicted values and corresponding subjects
+ref_grid <- with(clean_data, 
+                 expand.grid(Target = unique(Target), meridian = unique(meridian), subject = unique(subject)))
+
+pred_mean_lat <- predict(MA, newdata = ref_grid)
+pred_sd_lat <- predict(MA, newdata = ref_grid, se.fit = TRUE)
+pred_sd_lat <- pred_sd_lat$se.fit
+
+# Create a data frame with the predicted values and corresponding meridian and target
+ref_grid$pred_mean_lat <- pred_mean_lat
+ref_grid$pred_sd_lat <- pred_sd_lat
+
+# Calculate minlat and maxlat
+ref_grid$minlat <- ref_grid$pred_mean_lat - ref_grid$pred_sd_lat
+ref_grid$maxlat <- ref_grid$pred_mean_lat + ref_grid$pred_sd_lat
+# Calculate the mean for each combination of meridian and target
+predicted_1 <- aggregate(cbind(pred_mean_lat, pred_sd_lat, minlat, maxlat) ~ meridian + Target + subject, ref_grid, mean)
+
+predicted_2 <- predicted_1 %>%
+  mutate(pos = case_when(
+    Target == "Faces" ~ 1.4,
+    Target == "Vehicles" ~ 1.6
+  ),
+  jitter = jitter(pos, factor = 1))
+
+## Box plot with predicted values 
+plt <- predicted_2 %>%
+  ggplot(aes(x = pos, y = pred_mean_lat, color=Target, fill = Target)) +
+  geom_boxplot(aes(colour = Target, fill=Target), 
+               #position = position_dodge(width=0.1),
+               outlier.shape = NA, alpha = 0.5, width = 0.1) +
+  geom_point(aes(x = jitter, y = pred_mean_lat, fill = Target, group=Target),
+             #position = position_dodge(width = .35),
+             size = 6, shape = 20) +
+  geom_line(aes(x=jitter,group=subject), color="black", alpha=.1)+
+  stat_boxplot(aes(group=Target),geom="errorbar", width=.1)+
+  stat_summary(
+    aes(group = Target),
+    fun = "mean",
+    geom = "point",
+    size = 6, # Adjust size as needed
+    color = "black",
+    shape = 15,
+    alpha = 0.75,
+    show.legend = FALSE
+  ) +
+  stat_summary(
+    aes(group = meridian),
+    fun = "mean",
+    geom = "line",
+    color = "black",
+    alpha = 0.75, 
+    show.legend = FALSE
+        )+
+  facet_wrap(~meridian) +
+  scale_fill_manual(values = c("orange", "blue"),
+                    labels = c("Face", "Vehicle")) +
+  scale_colour_manual(values = c("orange", "blue"),
+                      labels = c("Face", "Vehicle")) +
+  labs(y = "Saccadic reaction time (ms)",
+       x = 'Meridian',
+       title = "Predicted distribution of saccadic reaction time") +
+  theme_classic() +
+  theme(axis.title.y = element_text(size = 25),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_blank(),
+        axis.line.x=element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 25),
+        plot.title = element_text(hjust = 0.5, size = 30))+
+  scale_x_discrete(expand = c(0.3, 0))+
+  ylim(120,350)
+
+print(plt)
+
+```
+
+--> This part was just to get a rough idea about which parameters are best predicting the data. 
+We will use this knowledge in writing the models in the step 5.

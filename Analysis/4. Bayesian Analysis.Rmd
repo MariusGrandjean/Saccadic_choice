@@ -1,0 +1,239 @@
+---
+title: "4. Bayesian Analysis"
+output: html_document
+date: "2024-11-21"
+fig_width: 6 
+fig_height: 10
+---
+
+This is the fourth step of the data analysis pipeline. 
+
+In this code we select models, run diagnostic checking a
+
+1. We begin by loading the required packages .
+```{r packages, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(openxlsx)
+library(lme4)
+library(lmerTest)
+library(stats)
+library(emmeans)
+library(tidyboot)
+library(faintr)
+library(brms)
+library(stringr)
+library(dabestr)
+library(ez)
+library(MBESS)
+```
+
+2. We load the data
+
+```{r loading data, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+base::load("clean_data.rda")
+
+```
+
+3. Writing models
+
+We set the priors and run the models.
+
+```{r writing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+print(mean(clean_data$Latency1))
+print(sd(clean_data$Latency1))
+
+# To see what kinds of priors brms is using if we provide none
+get_prior(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
+          data = clean_data)
+
+priors <- c(
+  prior("normal(209, 10)", class = "Intercept"),
+  prior("normal(0, 15)", class = "b"),
+  prior("exponential(0.2)", class = "sd"),
+  prior("gamma(2,0.05)", class = "sigma"))
+
+# We run the model
+brm1 <- brm(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
+            data = clean_data,
+            family = exgaussian(),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+
+save(brm1, file="brm1.rda", compress="xz")
+
+tidybayes::summarise_draws(brm1)
+
+plot(brm1)
+
+pp_check(brm1, ndraws = 1e3)
+
+# Optional steps
+
+tidybayes::summarise_draws(brm2)
+print("The highest Rhat values -- Should be under 1.01")
+brms::rhat(brm1) %>% head()
+print("The smallest Effective Sample Size")
+brms::neff_ratio(brm1) %>% head()
+
+pars <- variables(brm1)
+pars_sel <- c(sample(pars[1:20], 20), sample(pars[-(1:20)], 20))
+plot(brm2, pars = pars_sel, N = 9, 
+     ask = FALSE, exact_match = TRUE, newpage = TRUE, plot = TRUE)
+
+bayesplot::color_scheme_set("blue")
+checkModel <- pp_check(brm2, resp = "Latency1", ndraws = 1e2) +
+  # theme(legend.position = "none") +
+  xlab("Saccadic reponse time") +
+  ylab("Density")
+print(checkModel)
+
+# Here we run another model where we add the interaction to check the amount of evidence for the interaction
+get_prior(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
+          data = clean_data)
+
+
+brm2 <- brm(Latency1 ~ 1 + Target + meridian + (1 + Target + meridian|subject),
+            data = clean_data,
+            family = exgaussian(),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm2, file="brm2.rda", compress="xz")
+
+plot(brm2)
+
+pp_check(brm2, ndraws = 1000)
+
+summary(brm2)
+
+# now we run a model only using the main effect of target
+brm3 <- brm(Latency1 ~ 1 + Target + (1 + Target|subject),
+            data = clean_data,
+            family = exgaussian(),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm3, file="brm3.rda", compress="xz")
+
+plot(brm3)
+
+pp_check(brm3, ndraws = 1000)
+
+# now we run a final model only using the main effect of meridian
+brm4 <- brm(Latency1 ~ 1 + meridian + (1 + meridian|subject),
+            data = clean_data,
+            family = exgaussian(),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm4, file="brm4.rda", compress="xz")
+
+plot(brm4)
+
+pp_check(brm4, ndraws = 1000)
+
+```
+
+4. Model comparison.
+
+In line with Vehtari et al. (2017), we used the LOO (Leave-One-Out) comparison method to evaluate the models. The goodness of fit for each model was assessed using the Watanabe-Akaike Information Criterion (WAIC), where a lower WAIC value indicates a better model fit (Kurz, 2019; Vehtari et al., 2017). LOO cross-validation was employed to compare the WAIC values and visualize the results. Model 1, with a WAIC of 215505 (± 307), emerged as the best-fitting model (see Figure X for the ranking of all models). 
+
+```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Now we compare the two models
+model_fit <- add_criterion(brm1, "waic")
+model_fit2 <- add_criterion(brm2,"waic")
+model_fit3 <- add_criterion(brm3, "waic")
+model_fit4 <- add_criterion(brm4, "waic")
+
+comparaison_model <- as.data.frame(loo_compare(model_fit, model_fit2, model_fit3, model_fit4, criterion = "waic"))
+print(comparaison_model, digits = 2, simplify = FALSE)
+
+loo_models <- comparaison_model %>% 
+  dplyr::select(waic, se_waic)
+
+# Convert rownames to a column
+loo_models$model <- rownames(loo_models) 
+
+loo_models <- loo_models %>%
+  filter(model != 'model_fit3') %>%   # Exclude model_fit3
+  mutate(model = recode(model,
+                        'model_fit' = 'model_1',
+                        'model_fit2' = 'model_2',
+                        'model_fit4' = 'model_4'))  # Don't need to recode model_fit3
+
+
+loo_models$model <- factor(loo_models$model, levels = c('model_1', 'model_2', 'model_4'))
+
+# Create the plot for supplementary material
+waic_plot <- ggplot(loo_models, aes(x = waic, y = model)) + 
+  geom_point(size = 3, color = "black") +  # Plot points for each model
+  geom_errorbarh(aes(xmin = waic - se_waic, xmax = waic + se_waic), height = 0.2) +  # Add error bars
+  labs(x = "WAIC", y = "Model_name") +  # Axis labels and title
+  xlim(215000, 217000) + 
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_rect(fill = "white"),  # Set background to white
+    axis.line = element_line(colour = "black"),  # Add axis lines
+    axis.ticks = element_line(colour = "black")  # Add ticks
+  )
+# Show the plot
+print(waic_plot)
+
+```
+
+5. Analysising the data using model 1.
+
+```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# We begin by looking at the coefficients 
+
+# We begin with retrieving the coefficients from the fixed effects
+brm.coefs <- fixef(brm1) %>% as.numeric()
+
+# Due to the organisations of the factors, the faces and the horizontal meridian are considered the baseline
+# You can always check this by looking at the name of the variable in the output. 
+# For example : b_TargetVehicles means that the baseline is faces and therefore shows the difference between the two.
+# In this case it means that the mean reaction time for vehicles is 11.3 ms bigger than for faces
+mean_face_hori_coef <- brm.coefs[1] + brm.coefs[2]*0 + brm.coefs[3]*0 # 211
+
+mean_vehicle_hori_coef <- brm.coefs[1] + brm.coefs[2]*1 + brm.coefs[3]*0 # 222: 211 (face when hori/baseline) + 11.3 (vehicles when hori)
+
+mean_face_vert_coef <- brm.coefs[1] + brm.coefs[2]*0 + brm.coefs[3]*1 # 216 : 211 (face when hori) + 5.89 (vertical meridian)
+
+mean_vehicle_vert_coef <- brm.coefs[1] + brm.coefs[2]*1 + brm.coefs[3]*1 # 227 : 211 (faces when hori) + 11.3 (vehicles when hori) + 5.89 (vertical meridian)
+
+
+# We look the summary of the model
+summary(brm1)
+
+# As we find no interaction, we only create HDI for the significant effects
+compare_groups(fit = brm1,
+               higher = Target == "Vehicles" ,
+               lower = Target =="Faces",
+               hdi = 0.89,
+               include_bf = FALSE)
+
+compare_groups(fit = brm1,
+               higher = meridian == "Vertical" ,
+               lower = meridian =="Horizontal",
+               hdi = 0.89,
+               include_bf = FALSE)
+
+```
+--> This conclude the analysis pipeline for this task.
+

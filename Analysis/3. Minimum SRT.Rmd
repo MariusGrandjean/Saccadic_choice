@@ -1,0 +1,389 @@
+---
+title: "3. Minimum SRT"
+output: html_document
+date: "2024-11-21"
+fig_width: 6 
+fig_height: 10 
+---
+
+This is the third step of the data analysis pipeline. 
+
+In this code we generate the minimum saccadic reaction time (min SRT). It is defined as the shortest latency at which there were significantly more correct than incorrect saccades. 
+
+1. We begin by loading the required packages .
+```{r packages, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(openxlsx)
+library(lme4)
+library(lmerTest)
+library(stats)
+library(emmeans)
+library(tidyboot)
+library(faintr)
+library(brms)
+library(stringr)
+library(dabestr)
+library(ez)
+library(MBESS)
+```
+
+2. We load the data
+
+```{r loading data, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+base::load("clean_data.rda")
+
+```
+
+3. We follow the method outlined by Crouzet et al (2010).
+
+A. Latency distributions of all participants are divided into 10 ms intervals (e.g., the 100 ms bin includes SRTs from 95 ms to 104 ms).
+B. For each bin, we calculate the group-level percentage of correct and incorrect saccades. 
+C. The minSRT is identified as the first bin in which five consecutive bins showed a significantly higher proportion of correct than incorrect saccades (χ² test, p < .05). 
+
+```{r obtaining min SRT, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Function to process data: filter, bin, tabulate, and perform chi-square test for the original data
+process_data <- function(target, meridian_value, data) {
+  
+  # Step 1: Filter data based on target, valid condition, and meridian value
+  filtered_data <- data %>%
+    filter(Target == target, meridian == meridian_value)
+  
+  # Step 2: Create bins for Latency1
+  binned_data <- filtered_data %>%
+    mutate(Latency_bin = cut(Latency1, 
+                             breaks = seq(5, 500, by = 10), 
+                             include.lowest = TRUE, 
+                             right = FALSE,
+                             labels = round(seq(5,490, by = 10) + 5,0)/2*2),
+           Bin_range = cut(Latency1, 
+                           breaks = seq(5, 500, by = 10), 
+                           include.lowest = TRUE, 
+                           right = FALSE))
+  
+  # Step 3: Count occurrences of 'Accuracy' within each bin
+  counted_data <- binned_data %>%
+    count(Latency_bin, Bin_range, Accuracy) %>%
+    pivot_wider(names_from = Accuracy, values_from = n, values_fill = list(n = 0))
+  
+  # Step 4: Perform chi-square test for each row
+  chi_squared_data <- counted_data %>%
+    rowwise() %>%
+    mutate(
+      more_correct = `1` > `0`,
+      test_result = list(chisq.test(c_across(`0`:`1`))),        
+      p_value = test_result$p.value,                 
+      significant = p_value < 0.05 & more_correct == "TRUE" # Check if p-value is significant and if there are more 1s than 0s
+    ) %>% 
+    ungroup()
+  
+  # Step 5A: Identify groups of consecutive significant results
+  consecutive_significant_data <- chi_squared_data %>%
+    mutate(
+      grp = cumsum(lag(significant, default = FALSE) == FALSE),
+      consecutive_significant = ifelse(significant, ave(significant, grp, FUN = cumsum), 0))
+  
+  # Step 5B: Ensure that only the first time consecutive significant equals 5 will be taken into account
+  first_five_sig <- TRUE
+  
+  # Step 6: Retrieve Latency_bin value from 4 steps earlier when condition is met
+  lagged_data <- consecutive_significant_data %>%
+    mutate(lagged_Latency_bin = lag(as.character(Latency_bin), 4)) %>%
+    rowwise() %>%
+    mutate(
+      minSRT = if (consecutive_significant == 5 & first_five_sig) {
+        print(paste("The minSRT is:", lagged_Latency_bin))
+        first_five_sig <<- FALSE
+        TRUE
+      } else {
+        FALSE
+      }
+    ) %>%
+    ungroup()
+
+  # Step 7: Clean up by removing intermediate columns
+  final_data <- lagged_data %>%
+    dplyr::select(-grp, -lagged_Latency_bin, -minSRT)
+  
+  return(final_data)
+}
+
+# Create bins and tabulate results for each data set
+r_faces_hori <- process_data("Faces", "Horizontal", clean_data)
+r_vehicles_hori <- process_data("Vehicles", "Horizontal", clean_data)
+r_faces_vert <- process_data("Faces", "Vertical", clean_data)
+r_vehicles_vert <- process_data("Vehicles", "Vertical", clean_data)
+
+```
+4. We compute boostrapping to later build 95% CI.
+
+```{r bootstrapped min SRT, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+process_data_bootstrapped <- function(target, meridian_value, data, n_times = 5000, seed = 1) {
+  
+  # Set the seed for reproducibility
+  set.seed(seed)
+  
+  # Perform bootstrapping and create vectors to store the values
+  bootstrap_results <- vector("list", n_times)
+  minSRT_values <- vector("list", n_times)  # Store printed messages
+  
+  for (i in 1:n_times) {
+    bootstrap_sample <- data %>% sample_frac(replace = TRUE)
+    
+    # Step 1: Filter data based on target, valid condition, and meridian value
+    filtered_data <- bootstrap_sample %>%
+      filter(Target == target, meridian == meridian_value)
+    
+    # Step 2: Create bins for Latency1
+    binned_data <- filtered_data %>%
+      mutate(Latency_bin = cut(Latency1, 
+                               breaks = seq(5, 500, by = 10), 
+                               include.lowest = TRUE, 
+                               right = FALSE,
+                               labels = round(seq(5,490, by = 10) + 5,0)/2*2),
+             Bin_range = cut(Latency1, 
+                             breaks = seq(5, 500, by = 10), 
+                             include.lowest = TRUE, 
+                             right = FALSE))
+    
+    # Step 3: Count occurrences of 'Accuracy' within each bin
+    counted_data <- binned_data %>%
+      count(Latency_bin, Bin_range, Accuracy) %>%
+      pivot_wider(names_from = Accuracy, values_from = n, values_fill = list(n = 0))
+    
+    # Step 4: Perform chi-square test for each row
+    chi_squared_data <- counted_data %>%
+      rowwise() %>%
+      mutate(
+        more_correct = `1` > `0`,
+        test_result = list(chisq.test(c_across(`0`:`1`))),        
+        p_value = test_result$p.value,                 
+        significant = p_value < 0.05 & more_correct == "TRUE") %>%  # Check if p-value is significant and if there are more 1s than 0s
+      ungroup()
+    
+    # Step 5A: Identify groups of consecutive significant results
+    consecutive_significant_data <- chi_squared_data %>%
+      mutate(
+        grp = cumsum(lag(significant, default = FALSE) == FALSE),
+        consecutive_significant = ifelse(significant, ave(significant, grp, FUN = cumsum), 0))
+    
+    # Step 5B: Ensure that only the first time consecutive significant equals 5 will be taken into account
+    first_five_sig <- TRUE
+    
+    # Step 6: Retrieve Latency_bin value from 4 steps earlier when condition is met
+    lagged_data <- consecutive_significant_data %>%
+      mutate(lagged_Latency_bin = lag(as.character(Latency_bin), 4)) %>%
+      rowwise() %>%
+      mutate(
+        minSRT = if (consecutive_significant == 5 & first_five_sig) {
+          print(paste("The minSRT is:", lagged_Latency_bin))
+          minSRT_values[[i]] <<- as.numeric(as.character(lagged_Latency_bin))  # Store message
+          first_five_sig <<- FALSE
+          TRUE
+        } else {
+          FALSE
+        }
+      ) %>%
+      ungroup()
+    
+    # Step 7: Clean up by removing intermediate columns
+    final_data <- lagged_data %>%
+      select(-grp, -lagged_Latency_bin, -minSRT)
+    
+    bootstrap_results[[i]] <- final_data
+  }
+  minSRT_values = as.numeric(minSRT_values)
+  return(list(bootstrap_results = bootstrap_results, minSRT_values = (minSRT_values)))
+}
+
+r_faces_hori_bootstrapped <- process_data_bootstrapped("Faces", "Horizontal", clean_data)
+r_vehicles_hori_bootstrapped <- process_data_bootstrapped("Vehicles", "Horizontal", clean_data)
+r_faces_vert_bootstrapped <- process_data_bootstrapped("Faces", "Vertical", clean_data)
+r_vehicles_vert_bootstrapped <- process_data_bootstrapped("Vehicles", "Vertical", clean_data)
+
+# Getting the confidence intervals 
+faces_hori_CI <- r_faces_hori_bootstrapped$minSRT_values %>%
+  {c(quantile(., probs = 0.025), quantile(., probs = 0.975))}
+
+vehicles_hori_CI <- r_vehicles_hori_bootstrapped$minSRT_values %>%
+  {c(quantile(., probs = 0.025), quantile(., probs = 0.975))}
+
+faces_vert_CI <- r_faces_vert_bootstrapped$minSRT_values %>%
+  {c(quantile(., probs = 0.025), quantile(., probs = 0.975))}
+
+vehicles_vert_CI <- r_vehicles_vert_bootstrapped$minSRT_values %>%
+  {c(quantile(., probs = 0.025), quantile(., probs = 0.975))}
+
+# Computing difference between Vehicles and Faces by meridian
+minSRT_face_adv_hori <- data.frame(
+  Faces_minSRT = r_faces_hori_bootstrapped$minSRT_values,
+  Vehicles_minSRT = r_vehicles_hori_bootstrapped$minSRT_values) %>%
+  mutate(Face_adv = Vehicles_minSRT - Faces_minSRT) %>%
+  summarise(
+    Mean_Face_Adv = mean(Face_adv),
+    SD_Face_Adv = sd(Face_adv),
+    CI_Lower = quantile(Face_adv, 0.025),
+    CI_Upper = quantile(Face_adv, 0.975))
+
+minSRT_face_adv_vert <- data.frame(
+  Faces_minSRT = r_faces_vert_bootstrapped$minSRT_values,
+  Vehicles_minSRT = r_vehicles_vert_bootstrapped$minSRT_values) %>% 
+  mutate(Face_adv = Vehicles_minSRT - Faces_minSRT) %>% 
+  summarise(
+    Mean_Face_Adv = mean(Face_adv),
+    SD_Face_Adv = sd(Face_adv),
+    CI_Lower = quantile(Face_adv, 0.025),
+    CI_Upper = quantile(Face_adv, 0.975))
+
+minSRT_face <- data.frame(
+  Faces_minSRT_hori = r_faces_hori_bootstrapped$minSRT_values,
+  Faces_minSRT_vert = r_faces_vert_bootstrapped$minSRT_values) %>%
+  mutate(Face = Faces_minSRT_hori - Faces_minSRT_vert) %>%
+  summarise(
+    Mean_Face = mean(Face),
+    SD_Face = sd(Face),
+    CI_Lower = quantile(Face, 0.025),
+    CI_Upper = quantile(Face, 0.975))
+
+minSRT_vehicle <- data.frame(
+  Vehicles_minSRT_hori = r_vehicles_hori_bootstrapped$minSRT_values,
+  Vehicles_minSRT_vert = r_vehicles_vert_bootstrapped$minSRT_values) %>% 
+  mutate(Vehicle = Vehicles_minSRT_hori - Vehicles_minSRT_vert) %>% 
+  summarise(
+    Mean_Vehi = mean(Vehicle),
+    SD_Vehi = sd(Vehicle),
+    CI_Lower = quantile(Vehicle, 0.025),
+    CI_Upper = quantile(Vehicle, 0.975))
+
+```
+
+5. We use the same function as in step 3 but this time separate per sides of meridians (top, down, left, right)
+
+```{r min SRT by sides, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+process_data_sides <- function(target, valid_condition, side, data) {
+    # Step 1: Filter data
+    filtered_data <- data %>%
+      filter(Target == target, Valid == valid_condition, side == correct_location)
+    
+    # Step 2: Create bins
+    binned_data <- filtered_data %>%
+      mutate(Latency_bin = cut(Latency1, 
+                               breaks = seq(5, 500, by = 10), 
+                               include.lowest = TRUE, 
+                               right = FALSE,
+                               labels = round(seq(5,490, by = 10) + 5,0)/2*2),
+             Bin_range = cut(Latency1, 
+                             breaks = seq(5, 500, by = 10), 
+                             include.lowest = TRUE, 
+                             right = FALSE))
+    
+    # Step 3: Tabulate counts of 'Accuracy' within each bin
+    counted_data <- binned_data %>%
+      count(Latency_bin, Bin_range, Accuracy) %>%
+      pivot_wider(names_from = Accuracy, values_from = n, values_fill = list(n = 0))
+    
+    # Step 4: Perform chi-square test and identify consecutive significant results
+    chi_squared_data <- counted_data %>%
+      rowwise() %>%
+      mutate(
+        more_correct = `1` > `0`,
+        test_result = list(chisq.test(c_across(`0`:`1`))),        
+        p_value = test_result$p.value,                 
+        significant = p_value < 0.05 & more_correct == "TRUE" # Check if p-value is significant and if there are more 1s than 0s
+      ) %>% 
+      ungroup()
+    
+    # Step 5A: Identify groups of consecutive significant results
+    consecutive_significant_data <- chi_squared_data %>%
+      mutate(
+        grp = cumsum(lag(significant, default = FALSE) == FALSE),
+        consecutive_significant = ifelse(significant, ave(significant, grp, FUN = cumsum), 0))
+    
+    # Step 5B: Ensure that only the first time consecutive significant equals 5 will be taken into account
+    first_five_sig <- TRUE
+    
+    # Step 6: Retrieve Latency_bin value from 4 steps earlier when condition is met
+    lagged_data <- consecutive_significant_data %>%
+      mutate(lagged_Latency_bin = lag(as.character(Latency_bin), 4)) %>%
+      rowwise() %>%
+      mutate(
+        minSRT = if (consecutive_significant == 5 & first_five_sig) {
+          print(paste("The minSRT is:", lagged_Latency_bin))
+          first_five_sig <<- FALSE
+          TRUE
+        } else {
+          FALSE
+        }
+      ) %>%
+      ungroup()
+    
+    # Step 7: Clean up by removing intermediate columns
+    final_data <- lagged_data %>%
+      select(-grp, -lagged_Latency_bin, -minSRT)
+    
+    return(final_data)
+}
+
+# For horizontal meridian 
+r_faces_left <- process_data_sides("Faces", "1", "left", clean_data)
+r_vehicles_left <- process_data_sides("Vehicles", "1", "left", clean_data)
+r_faces_right <- process_data_sides("Faces", "1", "right", clean_data)
+r_vehicles_right <- process_data_sides("Vehicles", "1", "right", clean_data)
+
+# For vertical meridian
+r_faces_up <- process_data_sides("Faces", "1", "up", clean_data)
+r_vehicles_up <- process_data_sides("Vehicles", "1", "up", clean_data)
+r_faces_down <- process_data_sides("Faces", "1", "down", clean_data)
+r_vehicles_down <- process_data_sides("Vehicles", "1", "down", clean_data)
+
+```
+
+6. We create graphical representation of the distribution of the saccades, adding the min SRT.
+
+```{r plotting, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Manually specify the vertical line positions
+# This number are obtain from the 4 min SRTs computed at step 3.
+vline_data <- data.frame(
+  Target = c("Faces", "Faces", "Vehicles", "Vehicles"),
+  meridian = c("Horizontal", "Vertical", "Horizontal", "Vertical"),
+  vline_value = c(150, 160, 190, 210))
+
+# Graph
+line_plot <- clean_data %>%
+  ggplot(aes(x=Latency1, y = ..count../sum(..count..)*100, size=as.numeric(Accuracy), color=condition, group=condition))+
+  geom_line(stat="bin", binwidth=30)+
+  scale_colour_manual(values=c("orange", "blue"))+
+  facet_wrap(Target ~ meridian, scales = "free", strip.position = "top") +
+  xlab("Reaction Time (ms)")+
+  ylab("Proportion of saccades (%)")+
+  scale_size(range=c(1.0, 2.5), guide=FALSE)+
+  ylim(0,8)+
+  xlim(0,450)+
+  theme_classic()+
+  theme(strip.background = element_blank(),
+        strip.text= element_blank(),
+        axis.text=element_text(size=15),
+        axis.title=element_text(size=25),
+        legend.position = "none",
+        panel.spacing.x = unit(4, "lines"),
+        panel.spacing.y = unit(4, "lines"),
+        axis.title.x = element_blank(),  
+        axis.title.y = element_blank()) +  
+  geom_vline(data = vline_data, aes(xintercept = vline_value),
+             linetype = "solid", color = alpha("grey", 0.5), size = 1.75)
+
+print(line_plot)
+
+ggsave("lineplot.png", line_plot, dpi=600, width = 9, height = 6.5)
+
+```
+
+--> Once all of this is done, we are good to go to step number 5.

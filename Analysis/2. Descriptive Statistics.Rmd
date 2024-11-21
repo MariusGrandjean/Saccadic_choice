@@ -1,0 +1,677 @@
+---
+title: "2. Descriptive Statistics"
+output: html_document
+date: "2024-10-24"
+fig_width: 6 
+fig_height: 10 
+---
+This is the second step of the data analysis pipeline. 
+
+In this code we run descriptive statistics about the accuracy and latency of the saccades.
+
+1. We begin by loading the required packages .
+```{r packages, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(openxlsx)
+library(lme4)
+library(lmerTest)
+library(stats)
+library(emmeans)
+library(tidyboot)
+library(faintr)
+library(brms)
+library(stringr)
+library(dabestr)
+library(ez)
+library(MBESS)
+```
+
+2. We load the data, remove the training trials and create a new dataframe.
+
+```{r Removing training, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+### Open the file and remove training 
+excel_data <- read_excel("C:/Users/grandjeamari/Documents/Travail/UCLouvain/PhD/Projet/Projet-Saccades/Analysis/Data/Eyelink/Output_50.xlsx")
+
+excel_data$TRIALID <- as.numeric(excel_data$TRIALID)
+
+excel_data_no_training <- excel_data %>% 
+  filter(TRIALID > 19)
+
+# now we retake the same name for simplicity purpose
+excel_data <- excel_data_no_training
+
+```
+
+3. We assess whether all subjects have a reasonable amount of valid trials.
+NB: This is just a sanity check, we can decide to exclude or not subjects based on the quantity of invalid trials.
+
+```{r Checking valid saccades , echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Check by subject 
+valid_counts <- excel_data %>%
+  group_by(Subjects) %>%
+  summarize(subject_num_valid = mean(Valid == 1, na.rm = TRUE) * 100)
+print(valid_counts)
+
+invalid_subjects <- valid_counts %>% 
+  filter(subject_num_valid <= 75)
+print(invalid_subjects$Subjects)
+
+# Check by target
+valid_counts <- excel_data %>%
+  group_by(Target) %>%
+  summarize(target_num_valid = mean(Valid == 1, na.rm = TRUE) * 100)
+print(valid_counts)
+# Removing participants that have below 75% of valid trials
+
+#excel_data <- excel_data %>% 
+#    filter(!str_detect(Subjects, "^BED|^BEL|^FRL|^MAL"))
+
+#### Check how many trials where removed ####
+cat("The retrieval of invalid saccades led to the deletion of",
+    round(mean(excel_data$Valid == 0, na.rm = TRUE) * 100, 2),
+    "% of the trials\n")
+
+```
+
+4. We create a clean dataframe to facilitate further analysis.
+
+```{r creating new dataframes, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+# Create clean_df 
+clean_data <- excel_data %>% 
+  dplyr::select(Subjects, Target, Accuracy, Valid, Latency1, Distractor, correct_location, TRIALID) %>%
+  mutate(Subjects = substr(Subjects, 1, 8)) %>%
+  mutate(Accuracy=as.character(Accuracy)) %>%
+  filter(Valid == "1") %>% 
+  mutate(condition=case_when(Accuracy == "1" & Target == "faces" ~ "face",
+                             Accuracy == "1" & Distractor == "faces" ~ "vehi",
+                             Accuracy == "0" & Target == "vehicule" ~ "face",
+                             Accuracy == "0" & Distractor == "vehicule" ~ "vehi")) %>%
+  separate(Subjects, into=c("subject","meridian")) %>% 
+  mutate(Target=case_when(Target == "faces" ~ "Faces",
+                          Target == "vehicule" ~ "Vehicles"),
+         meridian=case_when(meridian == "hori" ~ "Horizontal",
+                       meridian == "vert" ~ "Vertical")) %>% 
+  mutate(Accuracy = as.numeric(Accuracy))
+
+save(clean_data, file = "clean_data.rda")
+
+# Creating a df with only accurate saccades
+clean_data_correct <- clean_data %>% 
+  filter(Accuracy == "1")
+
+```
+
+5. We look at the saccadic accuracy. We can then decide whether we want to exclude participants. 
+
+```{r checking accuracy, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+#### Check how many participant we have ####
+nsuj <- length(unique(substr(clean_data$subject, 1, 3)))
+print(paste("number of subjects:" , nsuj))
+
+# Check if participant have poor accuracy ####
+mean_acc <- clean_data %>%
+  dplyr::group_by(subject, Target, meridian) %>%
+  dplyr::summarize(mean_acc = mean(Accuracy, na.rm = TRUE),
+            sd_acc = sd(Accuracy, na.rm = TRUE)) %>%
+  dplyr::mutate(message = ifelse(mean_acc < 0.6, paste("Mean accuracy below 0.6 for", subject), NA))
+
+print(mean_acc, n = Inf, na.print = "")
+
+# Remove participants that have at least one condition below 60% accuracy
+#clean_data <- clean_data %>%
+#  filter(!str_detect(subject, "^FRL|^MAL|^PIB|^MRB|^STC"))
+
+#excel_data <- excel_data %>%
+#  filter(!str_detect(Subjects, "^FRL|^MAL|^PIB|^MRB|^STC"))
+
+```
+
+6. We start the analysis with saccadic accuracy. 
+As we will do a bayesian analysis on saccadic reaction time (SRT), we only go with a frequentist analysis for accuracies.
+
+```{r Accuracy analysis, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+##### Descriptive analysis #####
+# Perform ANOVA analysis
+results <- ezANOVA(data = clean_data,
+                   dv = .(Accuracy),
+                   wid = .(subject),
+                   within = .(Target, meridian),
+                   type = 3,
+                   detailed = TRUE,
+                   return_aov = TRUE)
+
+# Calculate partial eta squared
+results$ANOVA$partialetasquared <- results$ANOVA$SSn/(results$ANOVA$SSn+results$ANOVA$SSd)
+
+# Print results
+print(results$ANOVA)
+
+
+# Global accuracy for faces
+clean_data %>%
+  filter(Target == "Faces") %>%
+  summarize(mean_accuracy_faces = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces = sd(Accuracy, na.rm = TRUE))
+
+# Global accuracy for vehicles
+clean_data %>%
+  filter(Target == "Vehicles") %>%
+  summarize(mean_accuracy_vehicles = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles = sd(Accuracy, na.rm = TRUE))
+
+# Global horizontal accuracy
+clean_data %>%
+  filter(grepl("Horizontal", meridian)) %>%
+  summarize(mean_accuracy_hori = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_hori = sd(Accuracy, na.rm = TRUE))
+
+# Global vertical accuracy
+clean_data %>%
+  filter(grepl("Vertical", meridian)) %>%
+  summarize(mean_accuracy_vert = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vert = sd(Accuracy, na.rm = TRUE))
+
+```
+
+7. Here we describe the mean accuracy and latency of the saccades for the horiontal meridian.
+
+```{r horizontal analysis, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+## Accuracy ##
+
+hori_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("Horizontal", meridian)) %>%
+  summarize(mean_accuracy_faces_hori = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_hori = sd(Accuracy, na.rm = TRUE))
+
+hori_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("Horizontal", meridian)) %>%
+  summarize(mean_accuracy_vehicles_hori = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles_hori = sd(Accuracy, na.rm = TRUE))
+
+hori_accuracy_general <- clean_data %>% 
+  filter(grepl("Horizontal", meridian)) %>%
+  summarize(mean_accuracy_hori = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_hori = sd(Accuracy, na.rm = TRUE))
+
+# Print the results
+print(hori_accuracy_general)
+print(hori_accuracy_faces)
+print(hori_accuracy_vehicule)
+
+# left side only
+left_accuracy_general <- clean_data %>% 
+  filter(grepl("left", correct_location)) %>%
+  summarize(mean_accuracy_left = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_left = sd(Accuracy, na.rm = TRUE))
+
+left_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("left", correct_location)) %>%
+  summarize(mean_accuracy_faces_left = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_left = sd(Accuracy, na.rm = TRUE))
+
+left_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("left", correct_location)) %>%
+  summarize(mean_accuracy_vehicles_left = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles_left = sd(Accuracy, na.rm = TRUE))
+
+# right side only
+right_accuracy_general <- clean_data %>% 
+  filter(grepl("right", correct_location)) %>%
+  summarize(mean_accuracy_right = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_right = sd(Accuracy, na.rm = TRUE))
+
+right_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("right", correct_location)) %>%
+  summarize(mean_accuracy_faces_right = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_right = sd(Accuracy, na.rm = TRUE))
+
+right_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("right", correct_location)) %>%
+  summarize(mean_accuracy_vehicles_right = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles_right = sd(Accuracy, na.rm = TRUE))
+
+print(left_accuracy_general)
+print(left_accuracy_faces)
+print(left_accuracy_vehicule)
+print(right_accuracy_general)
+print(right_accuracy_faces)
+print(right_accuracy_vehicule)
+
+## Latency ##
+
+hori_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("Horizontal", meridian)) %>%
+  summarize(mean_latency_faces_hori = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces_hori = sd(Latency1, na.rm = TRUE))
+
+hori_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("Horizontal", meridian)) %>%
+  summarize(mean_latency_vehicles_hori = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles_hori = sd(Latency1, na.rm = TRUE))
+
+hori_latency_general <- clean_data_correct %>%
+  filter(grepl("Horizontal", meridian)) %>%
+  summarize(mean_latency_hori = mean(Latency1, na.rm = TRUE),
+            sd_latency_hori = sd(Latency1, na.rm = TRUE))
+
+# Print the results
+print(hori_latency_general)
+print(hori_latency_faces)
+print(hori_latency_vehicule)
+
+# left side only
+left_latency_general <- clean_data_correct %>% 
+  filter(grepl("left", correct_location)) %>%
+  summarize(mean_latency_left = mean(Latency1, na.rm = TRUE),
+            sd_latency_left = sd(Latency1, na.rm = TRUE))
+
+left_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("left", correct_location)) %>%
+  summarize(mean_latency_left = mean(Latency1, na.rm = TRUE),
+            sd_latency_left = sd(Latency1, na.rm = TRUE))
+
+left_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("left", correct_location)) %>%
+  summarize(mean_latency_left = mean(Latency1, na.rm = TRUE),
+            sd_latency_left = sd(Latency1, na.rm = TRUE))
+
+#right side only
+right_latency_general <- clean_data_correct %>% 
+  filter(grepl("right", correct_location)) %>%
+  summarize(mean_latency_right = mean(Latency1, na.rm = TRUE),
+            sd_latency_right = sd(Latency1, na.rm = TRUE))
+
+right_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("right", correct_location)) %>%
+  summarize(mean_latency_faces_right = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces_right = sd(Latency1, na.rm = TRUE))
+
+right_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("right", correct_location)) %>%
+  summarize(mean_latency_vehicles_right = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles_right = sd(Latency1, na.rm = TRUE))
+
+print(left_latency_general)
+print(left_latency_faces)
+print(left_latency_vehicule)
+print(right_latency_general)
+print(right_latency_faces)
+print(right_latency_vehicule)
+
+```
+
+8. Here we describe the mean accuracy and latency of the saccades for the vertical meridian.
+
+```{r vertical analysis, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+## Accuracy ##
+
+vert_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("Vertical", meridian)) %>%
+  summarize(mean_accuracy_faces_vert = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_vert = sd(Accuracy, na.rm = TRUE))
+
+vert_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("Vertical", meridian)) %>%
+  summarize(mean_accuracy_vehicles_vert = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles_vert = sd(Accuracy, na.rm = TRUE))
+
+vert_accuracy_general <- clean_data %>% 
+  filter(grepl("Vertical", meridian)) %>%
+  summarize(mean_accuracy_vert = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vert = sd(Accuracy, na.rm = TRUE))
+
+# Print the results
+print(vert_accuracy_general)
+print(vert_accuracy_faces)
+print(vert_accuracy_vehicule)
+
+# up side only
+up_accuracy_general <- clean_data %>% 
+  filter(grepl("up", correct_location)) %>%
+  summarize(mean_accuracy_up = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_up = sd(Accuracy, na.rm = TRUE))
+
+up_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("up", correct_location)) %>%
+  summarize(mean_accuracy_faces_up = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_up = sd(Accuracy, na.rm = TRUE))
+
+up_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("up", correct_location)) %>%
+  summarize(mean_accuracy_vehicles_up = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicule_up = sd(Accuracy, na.rm = TRUE))
+
+# down side only
+down_accuracy_general <- clean_data %>% 
+  filter(grepl("down", correct_location)) %>%
+  summarize(mean_accuracy_down = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_down = sd(Accuracy, na.rm = TRUE))
+
+down_accuracy_faces <- clean_data %>%
+  filter(Target == "Faces" & grepl("down", correct_location)) %>%
+  summarize(mean_accuracy_faces_down = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_faces_down = sd(Accuracy, na.rm = TRUE))
+
+down_accuracy_vehicule <- clean_data %>%
+  filter(Target == "Vehicles" & grepl("down", correct_location)) %>%
+  summarize(mean_accuracy_vehicles_down = mean(Accuracy, na.rm = TRUE),
+            sd_accuracy_vehicles_down = sd(Accuracy, na.rm = TRUE))
+
+print(up_accuracy_general)
+print(up_accuracy_faces)
+print(up_accuracy_vehicule)
+print(down_accuracy_general)
+print(down_accuracy_faces)
+print(down_accuracy_vehicule)
+
+## Latency ##
+
+vert_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("Vertical", meridian)) %>%
+  summarize(mean_latency_faces_vert = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces_vert = sd(Latency1, na.rm = TRUE))
+
+vert_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("Vertical", meridian)) %>%
+  summarize(mean_latency_vehicles_vert = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles_vert = sd(Latency1, na.rm = TRUE))
+
+vert_latency_general <- clean_data_correct %>%
+  filter(grepl("Vertical", meridian)) %>%
+  summarize(mean_latency_vert = mean(Latency1, na.rm = TRUE),
+            sd_latency_vert = sd(Latency1, na.rm = TRUE))
+
+# Print the results
+print(vert_latency_general)
+print(vert_latency_faces)
+print(vert_latency_vehicule)
+
+# up side only
+up_latency_general <- clean_data_correct %>% 
+  filter(grepl("up", correct_location)) %>%
+  summarize(mean_latency_up = mean(Latency1, na.rm = TRUE),
+            sd_latency_u = sd(Latency1, na.rm = TRUE))
+
+up_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("up", correct_location)) %>%
+  summarize(mean_latency_faces_up = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces_up = sd(Latency1, na.rm = TRUE))
+
+up_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("up", correct_location)) %>%
+  summarize(mean_latency_vehicles_up = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles_up = sd(Latency1, na.rm = TRUE))
+
+# down side only
+down_latency_general <- clean_data_correct %>% 
+  filter(grepl("down", correct_location)) %>%
+  summarize(mean_latency_down = mean(Latency1, na.rm = TRUE),
+            sd_latency_down = sd(Latency1, na.rm = TRUE))
+
+down_latency_faces <- clean_data_correct %>%
+  filter(Target == "Faces" & grepl("down", correct_location)) %>%
+  summarize(mean_latency_faces_down = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces_down = sd(Latency1, na.rm = TRUE))
+
+down_latency_vehicule <- clean_data_correct %>%
+  filter(Target == "Vehicles" & grepl("down", correct_location)) %>%
+  summarize(mean_latency_vehicles_down = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles_down = sd(Latency1, na.rm = TRUE))
+
+print(up_latency_general)
+print(up_latency_faces)
+print(up_latency_vehicule)
+print(down_latency_general)
+print(down_latency_faces)
+print(down_latency_vehicule)
+
+
+```
+
+9. Finaly, we create some plots to visualize the data.
+
+```{r data visualization, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Boxplot
+clean_data_2 <- clean_data %>% 
+  dplyr::select(subject, meridian, Accuracy, Latency1, condition) %>%
+  filter(Accuracy == "1") %>%
+  group_by(subject, meridian, condition) %>%
+  dplyr::summarise(mean_lat=mean(Latency1)) %>%
+  mutate(pos = case_when(condition=="face" ~ 1.4,
+                          condition=="vehi" ~ 1.6),
+         jitter = jitter(pos,factor=1)) %>% 
+  dplyr::rename(Target = condition)
+
+
+plt <- clean_data_2 %>%
+  ggplot(aes(x = pos, y = mean_lat, color=Target, fill = Target)) +
+  geom_boxplot(aes(colour = Target, fill=Target), 
+               outlier.shape = NA, alpha = 0.5, width = 0.1) +
+  geom_point(aes(x = jitter, y = mean_lat, fill = Target, group=subject),
+             size = 6, shape = 20) +
+  geom_line(aes(x=jitter,group=subject), color="black", alpha=.1)+
+  stat_boxplot(aes(group=Target),geom="errorbar", width=.1)+
+  facet_wrap(~meridian) +
+  #geom_flat_violin(aes(fill = condition),
+                   #position = position_nudge(x = .13, y = 0), 
+                   #adjust = 1, trim = FALSE, alpha = .75)+
+  scale_fill_manual(values = c("orange", "blue"),
+                    labels = c("Face", "Vehicle")) +
+  scale_colour_manual(values = c("orange", "blue"),
+                      labels = c("Face", "Vehicle")) +
+  labs(y = "Saccadic reaction time (ms)",
+       x = 'Meridian',
+       title = "Distribution of saccadic reaction time") +
+  stat_summary(
+    aes(group = Target),
+    fun = "mean",
+    geom = "point",
+    size = 6, # Adjust size as needed
+    color = "black",
+    shape = 15,
+    alpha = 0.75,
+    show.legend = FALSE
+  ) +
+  stat_summary(
+    aes(group = meridian),
+    fun = "mean",
+    geom = "line",
+    color = "black",
+    alpha = 0.75, 
+    show.legend = FALSE
+  )+
+  theme_classic() +
+  theme(axis.title.y = element_text(size = 25),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_blank(),
+        axis.line.x=element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 25),
+        plot.title = element_text(hjust = 0.5, size = 30))+
+  scale_x_discrete(expand = c(0.3, 0))+
+  ylim(120,380)
+
+print(plt)
+
+ggsave("plt.png", plt, dpi=600, width = 9, height = 7.5)
+
+# Let's also plot the accuracy
+clean_data_3 <- clean_data %>% 
+  dplyr::select(subject, meridian, Accuracy, Latency1, condition) %>%
+  group_by(subject, meridian, condition) %>%
+  dplyr::summarise(mean_acc=mean(Accuracy)) %>%
+  mutate(pos = case_when(condition=="face" ~ 1.4,
+                         condition=="vehi" ~ 1.6),
+         jitter = jitter(pos,factor=1)) %>% 
+  dplyr::rename(Target = condition)
+
+plt2 <- clean_data_3 %>%
+  ggplot(aes(x = pos, y = mean_acc, color=Target, fill = Target)) +
+  geom_boxplot(aes(colour = Target, fill=Target), 
+               outlier.shape = NA, alpha = 0.5, width = 0.1) +
+  geom_point(aes(x = jitter, y = mean_acc, fill = Target, group=subject),
+             size = 6, shape = 20) +
+  geom_line(aes(x=jitter,group=subject), color="black", alpha=.1)+
+  stat_boxplot(aes(group=Target),geom="errorbar", width=.1)+
+  facet_wrap(~meridian) +
+  #geom_flat_violin(aes(fill = condition),
+  #position = position_nudge(x = .13, y = 0), 
+  #adjust = 1, trim = FALSE, alpha = .75)+
+  scale_fill_manual(values = c("orange", "blue"),
+                    labels = c("Face", "Vehicle")) +
+  scale_colour_manual(values = c("orange", "blue"),
+                      labels = c("Face", "Vehicle")) +
+  labs(y = "Saccadic reaction time (ms)",
+       x = 'Meridian',
+       title = "Distribution of saccadic accuracy") +
+  stat_summary(
+    aes(group = Target),
+    fun = "mean",
+    geom = "point",
+    size = 6, # Adjust size as needed
+    color = "black",
+    shape = 15,
+    alpha = 0.75,
+    show.legend = FALSE
+  ) +
+  stat_summary(
+    aes(group = meridian),
+    fun = "mean",
+    geom = "line",
+    color = "black",
+    alpha = 0.75, 
+    show.legend = FALSE
+  )+
+  theme_classic() +
+  theme(axis.title.y = element_text(size = 25),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 20),
+        axis.title.x = element_blank(),
+        axis.line.x=element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 25),
+        plot.title = element_text(hjust = 0.5, size = 30))+
+  scale_x_discrete(expand = c(0.3, 0))+
+  ylim(0,1)
+
+print(plt2)
+
+ggsave("plt2.png", plt, dpi=600, width = 9, height = 7.5)
+
+```
+In this section, we create new dataframe that we will use for later correlations
+
+```{r data visualization, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+raw_face_adv_hori <-clean_data_2 %>% 
+  filter(meridian %in% "Horizontal") %>% 
+  group_by(subject) %>%
+  summarize(hori_adv = sum(mean_lat[Target == "vehi"]) - sum(mean_lat[Target == "face"])) %>%
+  dplyr::select(subject, hori_adv)
+
+
+raw_face_adv_vert <-clean_data_2 %>% 
+  filter(meridian %in% "Vertical") %>% 
+  group_by(subject) %>%
+  summarize(vert_adv = sum(mean_lat[Target== "vehi"]) - sum(mean_lat[Target == "face"])) %>%
+  dplyr::select(subject, vert_adv)
+
+raw_face_adv <- data.frame(subject = raw_face_adv_hori$subject, hori_adv = raw_face_adv_hori$hori_adv, vert_adv = raw_face_adv_vert$vert_adv)
+
+save(raw_face_adv, file = "raw_face_adv.rda")
+
+# We create this df to later check the correlations using these scores
+# We start by looking at all the saccades for the specific target regardless of meridian
+raw_face <- clean_data_2 %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = mean(mean_lat[Target == "face"])) %>%
+  dplyr::select(subject, meanSRT)
+
+raw_vehi <- clean_data_2 %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = mean(mean_lat[Target == "vehi"])) %>%
+  dplyr::select(subject, meanSRT)
+
+save(raw_face, file = "raw_face.rda")
+save(raw_vehi, file = "raw_vehi.rda")
+
+# Now we also split by meridian
+raw_face_hori <-clean_data_2 %>% 
+  filter(meridian %in% "Horizontal") %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = sum(mean_lat[Target == "face"])) %>%
+  dplyr::select(subject, meanSRT)
+
+raw_face_vert <-clean_data_2 %>% 
+  filter(meridian %in% "Vertical") %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = sum(mean_lat[Target == "face"])) %>%
+  dplyr::select(subject, meanSRT)
+
+raw_vehi_hori <-clean_data_2 %>% 
+  filter(meridian %in% "Horizontal") %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = sum(mean_lat[Target == "vehi"])) %>%
+  dplyr::select(subject, meanSRT)
+
+raw_vehi_vert <-clean_data_2 %>% 
+  filter(meridian %in% "Vertical") %>% 
+  group_by(subject) %>%
+  summarize(meanSRT = sum(mean_lat[Target == "vehi"])) %>%
+  dplyr::select(subject, meanSRT)
+
+save(raw_face_hori, file = "raw_face_hori.rda")
+save(raw_face_vert, file = "raw_face_vert.rda")
+save(raw_vehi_hori, file = "raw_vehi_hori.rda")
+save(raw_vehi_vert, file = "raw_vehi_vert.rda")
+
+# Count how many subjects obtained a bigger score for hori_adv
+num_subjects_bigger_hori_adv <- raw_face_adv %>%
+  filter(hori_adv >= 0 & vert_adv >= 0) %>% 
+  summarise(num_subjects = sum(hori_adv > vert_adv))
+
+# Print the number of subjects
+print(num_subjects_bigger_hori_adv)
+
+# Set the color of the points based on specific values (orange if adv for faces, otherwise blue if adv for vehicles)
+raw_face_adv$colour_condition <- ifelse(raw_face_adv$hori_adv > raw_face_adv$vert_adv, "#E46F34", "#EE9A09")
+raw_face_adv$colour_condition[!(raw_face_adv$hori_adv > raw_face_adv$vert_adv & raw_face_adv$hori_adv > 0 & raw_face_adv$vert_adv > 0)] <- "grey"
+
+
+raw_scatterplt <- raw_face_adv %>%
+  ggplot() + 
+  ggtitle("Face advantage (Vehicle - Face)") +
+  labs(x = "Horizontal meridian", y = "Vertical meridian") +
+  geom_dotplot(aes(x = hori_adv, y = vert_adv, group = subject), 
+               binaxis='y', stackdir='center', 
+               colour = raw_face_adv$colour_condition, 
+               fill = raw_face_adv$colour_condition, 
+               dotsize = 2, binwidth = .75)+ 
+  geom_abline(intercept = 0, slope = 1)+
+  geom_abline(hjust = 0, vjust = 0, intercept = 0, slope = 0, linetype = "dashed", color = "#EE9A09", alpha = 1) +  # Add a horizontal line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "#E46F34", alpha = 1) +  # Vertical line
+  guides(linetype = FALSE) +
+  scale_y_continuous(limits = c(-40, 50), breaks = seq(-40, 50, by = 5)) +
+  scale_x_continuous(limits = c(-40, 50), breaks = seq(-40, 50, by = 5)) +
+  theme(panel.grid = element_blank(),
+        aspect.ratio=1, #axis.text = element_text(size = 30),
+        panel.border = element_rect(colour = "black", fill=NA, size=3),
+        panel.background = element_rect(fill = "white", colour = "black"))
+print(raw_scatterplt)
+
+ggsave("myplot3.png", raw_scatterplt, dpi=600, width = 9, height = 6.5)
+
+```
+
+--> Once all of this is done, we are good to go to step number 3.
