@@ -43,6 +43,8 @@ base::load("clean_data.rda")
 
 We set the priors and run the models.
 
+3.A. Saccadic Latency
+
 ```{r writing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 print(mean(clean_data$Latency1))
 print(sd(clean_data$Latency1))
@@ -148,9 +150,129 @@ pp_check(brm4, ndraws = 1000)
 
 ```
 
+3.B. Saccadic Accuracy
+
+```{r writing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+print(mean(clean_data$Accuracy))
+print(sd(clean_data$Accuracy))
+
+# Note: The bernoulli family models binary outcomes (e.g., Accuracy = 0 or 1) 
+# using a logit link function, which expresses predictors' effects on the log-odds of success.
+# This is equivalent to a binomial model with n = 1 trial per observation.
+
+# To see what kinds of priors brms would use by default if none are provided:
+get_prior(Accuracy ~ 1 + Target * meridian + (1 + Target * meridian | subject),
+          data = clean_data)
+
+# Define priors for the model:
+priors <- c(
+  # Intercept prior: Assuming baseline accuracy = 75% (log-odds = log(0.75 / 0.25) = 1.1)
+  prior("normal(1.1, 2)", class = "Intercept"), 
+  # Priors for the fixed effects (b): Centered around 0 with a reasonable variance
+  prior("normal(0, 2)", class = "b"),
+  # Priors for the standard deviations of random effects: Exponential distribution
+  prior("exponential(0.2)", class = "sd"))
+
+# We run the model
+brm_acc_1 <- brm(Accuracy ~ 1 + Target * meridian + (1 + Target * meridian|subject),
+            data = clean_data,
+            family = bernoulli(link = "logit"),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+
+save(brm_acc_1, file="brm_acc_1.rda", compress="xz")
+
+tidybayes::summarise_draws(brm_acc_1)
+
+plot(brm_acc_1)
+
+pp_check(brm_acc_1, ndraws = 1e3)
+
+# Optional steps
+
+tidybayes::summarise_draws(brm_acc_1)
+print("The highest Rhat values -- Should be under 1.01")
+brms::rhat(brm_acc_1) %>% head()
+print("The smallest Effective Sample Size")
+brms::neff_ratio(brm_acc_1) %>% head()
+
+pars <- variables(brm_acc_1)
+pars_sel <- c(sample(pars[1:20], 20), sample(pars[-(1:20)], 20))
+plot(brm2, pars = pars_sel, N = 9, 
+     ask = FALSE, exact_match = TRUE, newpage = TRUE, plot = TRUE)
+
+bayesplot::color_scheme_set("blue")
+checkModel <- pp_check(brm_acc_1, resp = "Accuracy", ndraws = 1e2) +
+  # theme(legend.position = "none") +
+  xlab("Saccadic reponse time") +
+  ylab("Density")
+print(checkModel)
+
+# Here we run another model where we add the interaction to check the amount of evidence for the interaction
+get_prior(Accuracy ~ 1 + Target + meridian + (1 + Target * meridian|subject),
+          data = clean_data)
+
+
+brm_acc_2 <- brm(Accuracy ~ 1 + Target + meridian + (1 + Target + meridian|subject),
+            data = clean_data,
+            family = bernoulli(link = "logit"),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm_acc_2, file="brm_acc_2.rda", compress="xz")
+
+plot(brm_acc_2)
+
+pp_check(brm_acc_2, ndraws = 1000)
+
+summary(brm_acc_2)
+
+# now we run a model only using the main effect of target
+brm_acc_3 <- brm(Accuracy ~ 1 + Target + (1 + Target|subject),
+            data = clean_data,
+            family = bernoulli(link = "logit"),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm_acc_3, file="brm_acc_3.rda", compress="xz")
+
+plot(brm_acc_3)
+
+pp_check(brm_acc_3, ndraws = 1000)
+
+summary(brm_acc_3)
+
+# now we run a final model only using the main effect of meridian
+brm_acc_4 <- brm(Accuracy ~ 1 + meridian + (1 + meridian|subject),
+            data = clean_data,
+            family = bernoulli(link = "logit"),
+            prior = priors,
+            chains = 4, cores = parallel::detectCores(),
+            control = list(adapt_delta = 0.95),
+            warmup = 3000,iter = 6000)
+
+save(brm_acc_4, file="brm_acc_4.rda", compress="xz")
+
+plot(brm_acc_4)
+
+pp_check(brm_acc_4, ndraws = 1000)
+
+summary(brm_acc_4)
+
+```
+
 4. Model comparison.
 
 In line with Vehtari et al. (2017), we used the LOO (Leave-One-Out) comparison method to evaluate the models. The goodness of fit for each model was assessed using the Watanabe-Akaike Information Criterion (WAIC), where a lower WAIC value indicates a better model fit (Kurz, 2019; Vehtari et al., 2017). LOO cross-validation was employed to compare the WAIC values and visualize the results. Model 1, with a WAIC of 215505 (± 307), emerged as the best-fitting model (see Figure X for the ranking of all models). 
+
+4.A. Saccadic Latency
 
 ```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 # Now we compare the two models
@@ -196,7 +318,56 @@ print(waic_plot)
 
 ```
 
+4.B. Saccadic Accuracy
+
+```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Now we compare the two models
+model_fit <- add_criterion(brm_acc_1, "waic")
+model_fit2 <- add_criterion(brm_acc_2,"waic")
+model_fit3 <- add_criterion(brm_acc_3, "waic")
+model_fit4 <- add_criterion(brm_acc_4, "waic")
+
+comparaison_model <- as.data.frame(loo_compare(model_fit, model_fit2, model_fit3, model_fit4, criterion = "waic"))
+print(comparaison_model, digits = 2, simplify = FALSE)
+
+loo_models <- comparaison_model %>% 
+  dplyr::select(waic, se_waic)
+
+# Convert rownames to a column
+loo_models$model <- rownames(loo_models) 
+
+loo_models <- loo_models %>%
+  mutate(model = recode(model,
+                        'model_fit' = 'model_1',
+                        'model_fit2' = 'model_2',
+                        'model_fit3' = 'model_3',
+                        'model_fit4' = 'model_4'))  # Don't need to recode model_fit3
+
+
+loo_models$model <- factor(loo_models$model, levels = c('model_1', 'model_2', 'model_3', 'model_4'))
+
+# Create the plot for supplementary material
+waic_plot <- ggplot(loo_models, aes(x = waic, y = model)) + 
+  geom_point(size = 3, color = "black") +  # Plot points for each model
+  geom_errorbarh(aes(xmin = waic - se_waic, xmax = waic + se_waic), height = 0.2) +  # Add error bars
+  labs(x = "WAIC", y = "Model_name") +  # Axis labels and title
+  #xlim(215000, 217000) + 
+  theme(
+    panel.grid.major = element_blank(),  # Remove major grid lines
+    panel.grid.minor = element_blank(),  # Remove minor grid lines
+    panel.background = element_rect(fill = "white"),  # Set background to white
+    axis.line = element_line(colour = "black"),  # Add axis lines
+    axis.ticks = element_line(colour = "black")  # Add ticks
+  )
+# Show the plot
+print(waic_plot)
+
+```
+
+
 5. Analysising the data using model 1.
+
+5.A. Saccadic Latency
 
 ```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 
@@ -235,5 +406,29 @@ compare_groups(fit = brm1,
                include_bf = FALSE)
 
 ```
+
+5.B. Saccadic Accuracy
+
+```{r comparing models, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+
+# We look the summary of the model
+summary(brm_acc_1)
+
+# As we find no interaction, we only create HDI for the significant effects
+compare_groups(fit = brm_acc_1,
+               lower = Target == "Vehicles" ,
+               higher = Target =="Faces",
+               hdi = 0.89,
+               include_bf = FALSE)
+
+compare_groups(fit = brm_acc_1,
+               lower = meridian == "Vertical" ,
+               higher = meridian =="Horizontal",
+               hdi = 0.89,
+               include_bf = FALSE)
+
+```
+
 --> This conclude the analysis pipeline for this task.
 
