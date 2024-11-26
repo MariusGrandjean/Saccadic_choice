@@ -449,15 +449,22 @@ hdi_diff_meridian <- hdi(prob_diff_meridian, ci = 0.89)
 mean_diff_targets <- mean(prob_diff_targets)
 hdi_diff_targets <- hdi(prob_diff_targets, ci = 0.89)
 
+# Compute Bayes Factors
+# BF_10 = P(H1 | Data) / P(H0 | Data)
+bf_meridian <- sum(prob_diff_meridian > 0) / sum(prob_diff_meridian <= 0)
+bf_targets <- sum(prob_diff_targets > 0) / sum(prob_diff_targets <= 0)
+
 # Output results
 list(
   meridian_difference = list(
     mean_difference = mean_diff_meridian, 
-    hdi = hdi_diff_meridian
+    hdi = hdi_diff_meridian,
+    bf_10 = bf_meridian
   ),
   target_difference = list(
     mean_difference = mean_diff_targets, 
-    hdi = hdi_diff_targets
+    hdi = hdi_diff_targets,
+    bf_10 = bf_targets
   )
 )
 
