@@ -415,18 +415,53 @@ compare_groups(fit = brm1,
 # We look the summary of the model
 summary(brm_acc_1)
 
-# As we find no interaction, we only create HDI for the significant effects
-compare_groups(fit = brm_acc_1,
-               lower = Target == "Vehicles" ,
-               higher = Target =="Faces",
-               hdi = 0.89,
-               include_bf = FALSE)
+# Our posterior samples are in log-odds, therefore we have to convert them back before comparing the groups
 
-compare_groups(fit = brm_acc_1,
-               lower = meridian == "Vertical" ,
-               higher = meridian =="Horizontal",
-               hdi = 0.89,
-               include_bf = FALSE)
+# Extract posterior samples for relevant parameters
+posterior <- posterior_samples(
+  brm_acc_1, 
+  pars = c("b_Intercept", "b_meridianVertical", "b_TargetVehicles")
+)
+
+# Log-odds for Meridians
+log_odds_horizontal <- posterior$b_Intercept
+log_odds_vertical <- posterior$b_Intercept + posterior$b_meridianVertical
+
+# Log-odds for Targets
+log_odds_faces <- posterior$b_Intercept
+log_odds_vehicles <- posterior$b_Intercept + posterior$b_TargetVehicles
+
+# Convert log-odds to probabilities
+prob_horizontal <- plogis(log_odds_horizontal)
+prob_vertical <- plogis(log_odds_vertical)
+prob_faces <- plogis(log_odds_faces)
+prob_vehicles <- plogis(log_odds_vehicles)
+
+# Compute differences in probabilities
+prob_diff_meridian <- prob_horizontal - prob_vertical
+prob_diff_targets <- prob_faces - prob_vehicles
+
+# Summarize results for Meridians
+mean_diff_meridian <- mean(prob_diff_meridian)
+hdi_diff_meridian <- hdi(prob_diff_meridian, ci = 0.89)
+
+# Summarize results for Targets
+mean_diff_targets <- mean(prob_diff_targets)
+hdi_diff_targets <- hdi(prob_diff_targets, ci = 0.89)
+
+# Output results
+list(
+  meridian_difference = list(
+    mean_difference = mean_diff_meridian, 
+    hdi = hdi_diff_meridian
+  ),
+  target_difference = list(
+    mean_difference = mean_diff_targets, 
+    hdi = hdi_diff_targets
+  )
+)
+
+
 
 ```
 
