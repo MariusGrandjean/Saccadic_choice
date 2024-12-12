@@ -13,6 +13,7 @@ In this code we select models, run diagnostic checking a
 1. We begin by loading the required packages .
 ```{r packages, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 library(tidyverse)
+library(tidybayes)
 library(readxl)
 library(dplyr)
 library(patchwork)
@@ -392,18 +393,25 @@ mean_vehicle_vert_coef <- brm.coefs[1] + brm.coefs[2]*1 + brm.coefs[3]*1 # 227 :
 # We look the summary of the model
 summary(brm1)
 
-# As we find no interaction, we only create HDI for the significant effects
+hypothesis(brm1, "TargetVehicles:meridianVertical > 0") # for the interaction 
+
+posterior_samples <- posterior_samples(brm1)
+
+main_effects_samples <- posterior_samples[, c("b_TargetVehicles", "b_meridianVertical", "b_TargetVehicles:meridianVertical")]
+
+hdi(main_effects_samples, ci = 0.89)
+
 compare_groups(fit = brm1,
                higher = Target == "Vehicles" ,
                lower = Target =="Faces",
                hdi = 0.89,
-               include_bf = FALSE)
+               include_bf = TRUE)
 
 compare_groups(fit = brm1,
                higher = meridian == "Vertical" ,
                lower = meridian =="Horizontal",
                hdi = 0.89,
-               include_bf = FALSE)
+               include_bf = TRUE)
 
 ```
 
@@ -468,7 +476,13 @@ list(
   )
 )
 
+hypothesis(brm_acc_1, "TargetVehicles:meridianVertical > 0")
 
+posterior_samples <- posterior_samples(brm_acc_1)
+
+main_effects_samples <- posterior_samples[, c("b_TargetVehicles", "b_meridianVertical", "b_TargetVehicles:meridianVertical")]
+
+hdi(main_effects_samples, ci = 0.89)
 
 ```
 

@@ -72,7 +72,7 @@ print(valid_counts)
 #excel_data <- excel_data %>% 
 #    filter(!str_detect(Subjects, "^BED|^BEL|^FRL|^MAL"))
 
-#### Check how many trials where removed ####
+
 cat("The retrieval of invalid saccades led to the deletion of",
     round(mean(excel_data$Valid == 0, na.rm = TRUE) * 100, 2),
     "% of the trials\n")
@@ -111,11 +111,10 @@ clean_data_correct <- clean_data %>%
 5. We look at the saccadic accuracy. We can then decide whether we want to exclude participants. 
 
 ```{r checking accuracy, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
-#### Check how many participant we have ####
+
 nsuj <- length(unique(substr(clean_data$subject, 1, 3)))
 print(paste("number of subjects:" , nsuj))
 
-# Check if participant have poor accuracy ####
 mean_acc <- clean_data %>%
   dplyr::group_by(subject, Target, meridian) %>%
   dplyr::summarize(mean_acc = mean(Accuracy, na.rm = TRUE),
@@ -133,27 +132,11 @@ print(mean_acc, n = Inf, na.print = "")
 
 ```
 
-6. We start the analysis with saccadic accuracy. 
-As we will do a bayesian analysis on saccadic reaction time (SRT), we only go with a frequentist analysis for accuracies.
+6. We start the analysis with global results.
 
 ```{r Accuracy analysis, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 
-##### Descriptive analysis #####
-# Perform ANOVA analysis
-results <- ezANOVA(data = clean_data,
-                   dv = .(Accuracy),
-                   wid = .(subject),
-                   within = .(Target, meridian),
-                   type = 3,
-                   detailed = TRUE,
-                   return_aov = TRUE)
-
-# Calculate partial eta squared
-results$ANOVA$partialetasquared <- results$ANOVA$SSn/(results$ANOVA$SSn+results$ANOVA$SSd)
-
-# Print results
-print(results$ANOVA)
-
+# Accuracy
 
 # Global accuracy for faces
 clean_data %>%
@@ -178,6 +161,32 @@ clean_data %>%
   filter(grepl("Vertical", meridian)) %>%
   summarize(mean_accuracy_vert = mean(Accuracy, na.rm = TRUE),
             sd_accuracy_vert = sd(Accuracy, na.rm = TRUE))
+
+# Latency
+
+# Global latency for faces
+clean_data %>%
+  filter(Target == "Faces") %>%
+  summarize(mean_latency_faces = mean(Latency1, na.rm = TRUE),
+            sd_latency_faces = sd(Latency1, na.rm = TRUE))
+
+# Global accuracy for vehicles
+clean_data %>%
+  filter(Target == "Vehicles") %>%
+  summarize(mean_latency_vehicles = mean(Latency1, na.rm = TRUE),
+            sd_latency_vehicles = sd(Latency1, na.rm = TRUE))
+
+# Global horizontal accuracy
+clean_data %>%
+  filter(grepl("Horizontal", meridian)) %>%
+  summarize(mean_latency_hori = mean(Latency1, na.rm = TRUE),
+            sd_latency_hori = sd(Latency1, na.rm = TRUE))
+
+# Global vertical accuracy
+clean_data %>%
+  filter(grepl("Vertical", meridian)) %>%
+  summarize(mean_latency_vert = mean(Latency1, na.rm = TRUE),
+            sd_latency_vert = sd(Latency1, na.rm = TRUE))
 
 ```
 
@@ -570,6 +579,7 @@ print(plt2)
 ggsave("plt2.png", plt, dpi=600, width = 9, height = 7.5)
 
 ```
+
 In this section, we create new dataframe that we will use for later correlations
 
 ```{r data visualization, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
@@ -579,7 +589,6 @@ raw_face_adv_hori <-clean_data_2 %>%
   group_by(subject) %>%
   summarize(hori_adv = sum(mean_lat[Target == "vehi"]) - sum(mean_lat[Target == "face"])) %>%
   dplyr::select(subject, hori_adv)
-
 
 raw_face_adv_vert <-clean_data_2 %>% 
   filter(meridian %in% "Vertical") %>% 
