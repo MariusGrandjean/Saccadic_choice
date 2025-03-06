@@ -30,6 +30,7 @@ library(stringr)
 library(dabestr)
 library(ez)
 library(MBESS)
+library(bayestestR)
 ```
 
 2. We load the data
@@ -62,11 +63,12 @@ priors <- c(
 
 # We run the model
 brm1 <- brm(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
-            data = clean_data,
+            data = clean_data, 
             family = exgaussian(),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 
@@ -109,6 +111,7 @@ brm2 <- brm(Latency1 ~ 1 + Target + meridian + (1 + Target + meridian|subject),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm2, file="brm2.rda", compress="xz")
@@ -126,6 +129,7 @@ brm3 <- brm(Latency1 ~ 1 + Target + (1 + Target|subject),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm3, file="brm3.rda", compress="xz")
@@ -141,6 +145,7 @@ brm4 <- brm(Latency1 ~ 1 + meridian + (1 + meridian|subject),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm4, file="brm4.rda", compress="xz")
@@ -181,6 +186,7 @@ brm_acc_1 <- brm(Accuracy ~ 1 + Target * meridian + (1 + Target * meridian|subje
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 
@@ -223,6 +229,7 @@ brm_acc_2 <- brm(Accuracy ~ 1 + Target + meridian + (1 + Target + meridian|subje
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm_acc_2, file="brm_acc_2.rda", compress="xz")
@@ -240,6 +247,7 @@ brm_acc_3 <- brm(Accuracy ~ 1 + Target + (1 + Target|subject),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm_acc_3, file="brm_acc_3.rda", compress="xz")
@@ -257,6 +265,7 @@ brm_acc_4 <- brm(Accuracy ~ 1 + meridian + (1 + meridian|subject),
             prior = priors,
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
+            sample_prior = "yes",
             warmup = 3000,iter = 6000)
 
 save(brm_acc_4, file="brm_acc_4.rda", compress="xz")
@@ -393,6 +402,19 @@ mean_vehicle_vert_coef <- brm.coefs[1] + brm.coefs[2]*1 + brm.coefs[3]*1 # 226 :
 # We look the summary of the model
 summary(brm1)
 
+# ----- Define a ROPE for Equivalence Testing -----
+# You must justify your ROPE based on domain knowledge.
+rope_range <- c(-0.1, 0.1)  # Example ROPE; adjust as appropriate
+
+# ----- MAIN EFFECTS -----
+
+# Equivalence test for the main effect + interaction
+# Allows to asses for significativity of effects
+
+equivalence_test(brm1, 
+                 range = "default", 
+                 ci = 0.89)
+
 # We obtain the 89% HDI and BF for comparison of groups within the main effects
 compare_groups(fit = brm1,
                higher = Target == "Vehicles" ,
@@ -406,16 +428,23 @@ compare_groups(fit = brm1,
                hdi = 0.89,
                include_bf = TRUE)
 
-# We obtain the BF for the interaction
-brms::hypothesis(brm1, "TargetVehicles:meridianVertical > 0") # for the interaction #fonctionne pas en Rmarkdown
+hypothesis(brm1, "TargetVehicles > 0")
+hypothesis(brm1, "meridianVertical > 0")
 
-# We obtain the 89% for the interaction (as well as the other main effects just for clearance)
+# ----- INTERACTION EFFECT -----
+
+# Obtain the Bayes Factor for the interaction.
+# Here we use a two-sided test (comparing against the point null of 0)
+hypothesis(brm1, "TargetVehicles:meridianVertical = 0")
+
+# ----- CORRELATION BETWEEN MAIN EFFECTS -----
+
+# Extract posterior samples from your model
 posterior_samples <- posterior_samples(brm1)
 
-main_effects_samples <- posterior_samples[, c("b_TargetVehicles", "b_meridianVertical", "b_TargetVehicles:meridianVertical")]
-
-bayestestR::hdi(main_effects_samples, ci = 0.89) # This is how I obtain HDI for interaction.
-# However apparently, this is not taking random effects into account.
+# Calculate the correlation between the Target and Meridian coefficients
+cor_target_meridian <- cor(posterior_samples$b_TargetVehicles,
+                           posterior_samples$b_meridianVertical)
 
 
 ```
@@ -428,66 +457,51 @@ bayestestR::hdi(main_effects_samples, ci = 0.89) # This is how I obtain HDI for 
 # We look the summary of the model
 summary(brm_acc_1)
 
-# Our posterior samples are in log-odds, therefore we have to convert them back before comparing the groups
+# ----- Define a ROPE for Equivalence Testing -----
+# You must justify your ROPE based on domain knowledge.
+rope_range <- c(-0.1, 0.1)  # Example ROPE; adjust as appropriate
 
-# Extract posterior samples for relevant parameters
-posterior <- posterior_samples(
-  brm_acc_1, 
-  pars = c("b_Intercept", "b_meridianVertical", "b_TargetVehicles")
-)
+# ----- MAIN EFFECTS -----
 
-# Log-odds for Meridians
-log_odds_horizontal <- posterior$b_Intercept
-log_odds_vertical <- posterior$b_Intercept + posterior$b_meridianVertical
+# Equivalence test for the main effect + interaction
+# Allows to asses for significativity of effects
 
-# Log-odds for Targets
-log_odds_faces <- posterior$b_Intercept
-log_odds_vehicles <- posterior$b_Intercept + posterior$b_TargetVehicles
+equivalence_test(brm_acc_1, 
+                 range = "default", 
+                 ci = 0.89)
 
-# Convert log-odds to probabilities
-prob_horizontal <- plogis(log_odds_horizontal)
-prob_vertical <- plogis(log_odds_vertical)
-prob_faces <- plogis(log_odds_faces)
-prob_vehicles <- plogis(log_odds_vehicles)
+# We obtain the 89% HDI and BF for comparison of groups within the main effects
+compare_groups(fit = brm1,
+               higher = Target == "Vehicles" ,
+               lower = Target =="Faces",
+               hdi = 0.89,
+               include_bf = TRUE)
 
-# Compute differences in probabilities
-prob_diff_meridian <- prob_horizontal - prob_vertical
-prob_diff_targets <- prob_faces - prob_vehicles
+compare_groups(fit = brm1,
+               higher = meridian == "Vertical" ,
+               lower = meridian =="Horizontal",
+               hdi = 0.89,
+               include_bf = TRUE)
 
-# Summarize results for Meridians
-mean_diff_meridian <- mean(prob_diff_meridian)
-hdi_diff_meridian <- bayestestR::hdi(prob_diff_meridian, ci = 0.89)
+hypothesis(brm_acc_1, "TargetVehicles < 0")
+hypothesis(brm_acc_1, "meridianVertical < 0")
 
-# Summarize results for Targets
-mean_diff_targets <- mean(prob_diff_targets)
-hdi_diff_targets <- bayestestR::hdi(prob_diff_targets, ci = 0.89)
+# ----- INTERACTION EFFECT -----
 
-# Compute Bayes Factors
-# BF_10 = P(H1 | Data) / P(H0 | Data)
-bf_meridian <- sum(prob_diff_meridian > 0) / sum(prob_diff_meridian <= 0)
-bf_targets <- sum(prob_diff_targets > 0) / sum(prob_diff_targets <= 0)
+# Obtain the Bayes Factor for the interaction.
+# Here we use a two-sided test (comparing against the point null of 0)
+hypothesis(brm_acc_1, "TargetVehicles:meridianVertical < 0")
 
-# Output results
-list(
-  meridian_difference = list(
-    mean_difference = mean_diff_meridian, 
-    hdi = hdi_diff_meridian,
-    bf_10 = bf_meridian
-  ),
-  target_difference = list(
-    mean_difference = mean_diff_targets, 
-    hdi = hdi_diff_targets,
-    bf_10 = bf_targets
-  )
-)
+# ----- CORRELATION BETWEEN MAIN EFFECTS -----
 
-hypothesis(brm_acc_1, "TargetVehicles:meridianVertical > 0")
-
+# Extract posterior samples from your model
 posterior_samples <- posterior_samples(brm_acc_1)
 
-main_effects_samples <- posterior_samples[, c("b_TargetVehicles", "b_meridianVertical", "b_TargetVehicles:meridianVertical")]
+# Calculate the correlation between the Target and Meridian coefficients
+cor_target_meridian <- cor(posterior_samples$b_TargetVehicles,
+                           posterior_samples$b_meridianVertical)
 
-bayestestR::hdi(main_effects_samples, ci = 0.89)
+
 
 ```
 
