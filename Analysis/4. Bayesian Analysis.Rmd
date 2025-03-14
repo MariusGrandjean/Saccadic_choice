@@ -59,7 +59,7 @@ priors <- c(
   prior("normal(209, 10)", class = "Intercept"),
   prior("normal(0, 15)", class = "b"),
   prior("exponential(0.2)", class = "sd"),
-  prior("gamma(2,0.05)", class = "sigma"))
+  prior("gamma(2, 0.05)", class = "sigma"))
 
 # We run the model
 brm1 <- brm(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
@@ -69,6 +69,7 @@ brm1 <- brm(Latency1 ~ 1 + Target * meridian + (1 + Target * meridian|subject),
             chains = 4, cores = parallel::detectCores(),
             control = list(adapt_delta = 0.95),
             sample_prior = "yes",
+            backend = "cmdstanr",
             warmup = 3000,iter = 6000)
 
 
@@ -411,6 +412,10 @@ rope_range <- c(-0.1, 0.1)  # Example ROPE; adjust as appropriate
 # Equivalence test for the main effect + interaction
 # Allows to asses for significativity of effects
 
+describe_posterior(brm1,
+                   ci = .89,
+                   ci_method = "HDI")
+
 equivalence_test(brm1, 
                  range = "default", 
                  ci = 0.89)
@@ -435,7 +440,7 @@ hypothesis(brm1, "meridianVertical > 0")
 
 # Obtain the Bayes Factor for the interaction.
 # Here we use a two-sided test (comparing against the point null of 0)
-hypothesis(brm1, "TargetVehicles:meridianVertical = 0")
+hypothesis(brm1, "TargetVehicles:meridianVertical > 0")
 
 # ----- CORRELATION BETWEEN MAIN EFFECTS -----
 
@@ -471,13 +476,13 @@ equivalence_test(brm_acc_1,
                  ci = 0.89)
 
 # We obtain the 89% HDI and BF for comparison of groups within the main effects
-compare_groups(fit = brm1,
+compare_groups(fit = brm1_acc_1,
                higher = Target == "Vehicles" ,
                lower = Target =="Faces",
                hdi = 0.89,
                include_bf = TRUE)
 
-compare_groups(fit = brm1,
+compare_groups(fit = brm1_acc_1,
                higher = meridian == "Vertical" ,
                lower = meridian =="Horizontal",
                hdi = 0.89,
@@ -500,7 +505,6 @@ posterior_samples <- posterior_samples(brm_acc_1)
 # Calculate the correlation between the Target and Meridian coefficients
 cor_target_meridian <- cor(posterior_samples$b_TargetVehicles,
                            posterior_samples$b_meridianVertical)
-
 
 
 ```
