@@ -316,6 +316,32 @@ print(right_latency_general)
 print(right_latency_faces)
 print(right_latency_vehicule)
 
+
+# 2x2 ANOVA: Side (Left/Right) × Target (Faces/Vehicles)
+anova_2x2 <- clean_data %>%
+  filter(meridian == "Horizontal") %>%
+  mutate(
+    side = ifelse(grepl("left", correct_location), "Left", "Right"),
+    Target = factor(Target)   # ensure Target is a factor
+  ) %>%
+  aov(Accuracy ~ side * Target + Error(subject/(side*Target)), data = .)
+
+summary(anova_2x2)
+effectsize::eta_squared(anova_2x2)
+
+latency_anova_2x2 <- clean_data %>%
+  filter(meridian == "Horizontal") %>%
+  mutate(
+    side = ifelse(grepl("left", correct_location), "Left", "Right"),
+    Target = factor(Target)
+  ) %>%
+  aov(Latency1 ~ side * Target + Error(subject/(side*Target)), data = .)
+
+summary(latency_anova_2x2)
+effectsize::eta_squared(latency_anova_2x2)
+
+
+
 ```
 
 8. Here we describe the mean accuracy and latency of the saccades for the vertical meridian.
@@ -444,6 +470,87 @@ print(down_latency_general)
 print(down_latency_faces)
 print(down_latency_vehicule)
 
+# 2x2 ANOVA for vertical meridian accuracy
+anova_vert_accuracy <- clean_data %>%
+  filter(meridian == "Vertical") %>%
+  mutate(
+    side = ifelse(grepl("up", correct_location), "Up", "Down"),
+    Target = factor(Target)
+  ) %>%
+  aov(Accuracy ~ side * Target + Error(subject/(side*Target)), data = .)
+
+summary(anova_vert_accuracy)
+effectsize::eta_squared(anova_vert_accuracy)
+
+# 2x2 ANOVA for vertical meridian latency
+anova_vert_latency <- clean_data %>%
+  filter(meridian == "Vertical") %>%
+  mutate(
+    side = ifelse(grepl("up", correct_location), "Up", "Down"),
+    Target = factor(Target)
+  ) %>%
+  aov(Latency1 ~ side * Target + Error(subject/(side*Target)), data = .)
+
+summary(anova_vert_latency)
+effectsize::eta_squared(anova_vert_latency)
+
+
+
+```
+
+Here we run some anovas to do within meridian comparison
+
+```{r anovas, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(car)
+
+check_anova_assumptions <- function(data, dv, meridian_filter) {
+  
+  # Prepare data
+  df <- data %>%
+    filter(meridian == meridian_filter) %>%
+    mutate(
+      side = ifelse(grepl("up|left", correct_location), "Up/Left", "Down/Right"),
+      Target = factor(Target)
+    )
+  
+  # Fit simple ANOVA for diagnostics (ignoring Error() structure)
+  formula <- as.formula(paste0(dv, " ~ side * Target"))
+  fit <- aov(formula, data = df)
+  
+  # 1. Histogram of residuals
+  hist(residuals(fit), main = paste("Histogram of residuals:", dv),
+       xlab = "Residuals", col = "lightblue", breaks = 30)
+  
+  # 2. Q-Q plot
+  qqnorm(residuals(fit), main = paste("Q-Q plot of residuals:", dv))
+  qqline(residuals(fit), col = "red")
+  
+  # 3. Shapiro-Wilk test
+  shapiro_res <- shapiro.test(residuals(fit))
+  print(paste("Shapiro-Wilk test for", dv, "residuals:"))
+  print(shapiro_res)
+  
+  # 4. Levene's test for homogeneity of variance
+  levene_res <- leveneTest(fit)
+  print(paste("Levene's test for", dv, "by side*Target:"))
+  print(levene_res)
+  
+  # 5. Boxplot for detecting outliers
+  ggplot(df, aes(x = side, y = .data[[dv]], fill = Target)) +
+    geom_boxplot() +
+    facet_wrap(~Target) +
+    ggtitle(paste("Boxplot of", dv, "by side and Target")) +
+    theme_minimal()
+}
+
+check_anova_assumptions(clean_data_correct, dv = "Latency1", meridian_filter = "Horizontal")
+check_anova_assumptions(clean_data, dv = "Accuracy", meridian_filter = "Horizontal")
+check_anova_assumptions(clean_data_correct, dv = "Latency1", meridian_filter = "Vertical")
+check_anova_assumptions(clean_data, dv = "Accuracy", meridian_filter = "Vertical")
+
 
 ```
 
@@ -467,10 +574,10 @@ plt <- clean_data_2 %>%
   geom_boxplot(aes(colour = Target, fill=Target), 
                outlier.shape = NA, alpha = 0.5, width = 0.1) +
   geom_point(aes(x = jitter, y = mean_lat, fill = Target, group=subject),
-             size = 6, shape = 20) +
+             size = 4, shape = 20) +
   geom_line(aes(x=jitter,group=subject), color="black", alpha=.1)+
   stat_boxplot(aes(group=Target),geom="errorbar", width=.1)+
-  facet_wrap(~meridian) +
+  facet_wrap(~meridian, strip.position = "bottom") +
   #geom_flat_violin(aes(fill = condition),
                    #position = position_nudge(x = .13, y = 0), 
                    #adjust = 1, trim = FALSE, alpha = .75)+
@@ -478,14 +585,14 @@ plt <- clean_data_2 %>%
                     labels = c("Face", "Vehicle")) +
   scale_colour_manual(values = c("orange", "blue"),
                       labels = c("Face", "Vehicle")) +
-  labs(y = "Saccadic reaction time (ms)",
-       x = 'Meridian',
-       title = "Distribution of saccadic reaction time") +
+  labs(y = "Mean SRT",
+       x = 'Meridian')+
+       #title = "Distribution of saccadic reaction time") +
   stat_summary(
     aes(group = Target),
     fun = "mean",
     geom = "point",
-    size = 6, # Adjust size as needed
+    size = 4, # Adjust size as needed
     color = "black",
     shape = 15,
     alpha = 0.75,
@@ -500,20 +607,59 @@ plt <- clean_data_2 %>%
     show.legend = FALSE
   )+
   theme_classic() +
-  theme(axis.title.y = element_text(size = 25),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 20),
-        axis.title.x = element_blank(),
+  theme(axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.title.x = element_text(size = 20),
         axis.line.x=element_blank(),
         strip.background = element_blank(),
-        strip.text = element_text(size = 25),
-        plot.title = element_text(hjust = 0.5, size = 30))+
+        strip.text = element_text(size = 18),
+        plot.title = element_text(hjust = 0.5, size = 30),
+        legend.text = element_text(size = 15), 
+        legend.title = element_text(size = 18))+
   scale_x_discrete(expand = c(0.3, 0))+
-  ylim(120,380)
+  ylim(100,400)
 
 print(plt)
 
 ggsave("plt.png", plt, dpi=600, width = 9, height = 7.5)
+
+plt_single <- clean_data_2 %>%
+  filter(subject == "BED") %>% 
+  ggplot(aes(x = pos, y = mean_lat, color=Target, fill = Target)) +
+  #geom_boxplot(aes(colour = Target, fill=Target), 
+  #             outlier.shape = NA, alpha = 0.5, width = 0.1) +
+  geom_point(aes(x = jitter, y = mean_lat, fill = Target, group=subject),
+             size = 4, shape = 20) +
+  geom_line(aes(x=jitter,group=subject), color="black", alpha=.1)+
+  #(aes(group=Target),geom="errorbar", width=.1)+
+  facet_wrap(~meridian, strip.position = "bottom") +
+  #geom_flat_violin(aes(fill = condition),
+                   #position = position_nudge(x = .13, y = 0), 
+                   #adjust = 1, trim = FALSE, alpha = .75)+
+  scale_fill_manual(values = c("orange", "blue"),
+                    labels = c("Face", "Vehicle")) +
+  scale_colour_manual(values = c("orange", "blue"),
+                      labels = c("Face", "Vehicle")) +
+  labs(y = "Mean SRT",
+       x = 'Meridian')+
+  theme_classic() +
+  theme(axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.title.x = element_text(size = 20),
+        axis.line.x=element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 18),
+        plot.title = element_text(hjust = 0.5, size = 30),
+        legend.text = element_text(size = 15), 
+        legend.title = element_text(size = 18))+
+  scale_x_discrete(expand = c(0.3, 0))+
+  ylim(100,400)
+
+print(plt_single)
+
+ggsave("plt_single.png", plt_single, dpi=600, width = 9, height = 7.5)
 
 # Let's also plot the accuracy
 clean_data_3 <- clean_data %>% 
@@ -541,7 +687,7 @@ plt2 <- clean_data_3 %>%
                     labels = c("Face", "Vehicle")) +
   scale_colour_manual(values = c("orange", "blue"),
                       labels = c("Face", "Vehicle")) +
-  labs(y = "Saccadic reaction time (ms)",
+  labs(y = "SRT",
        x = 'Meridian',
        title = "Distribution of saccadic accuracy") +
   stat_summary(
@@ -563,14 +709,14 @@ plt2 <- clean_data_3 %>%
     show.legend = FALSE
   )+
   theme_classic() +
-  theme(axis.title.y = element_text(size = 25),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 20),
+  theme(axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 15),
         axis.title.x = element_blank(),
         axis.line.x=element_blank(),
         strip.background = element_blank(),
-        strip.text = element_text(size = 25),
-        plot.title = element_text(hjust = 0.5, size = 30))+
+        strip.text = element_text(size = 15),
+        plot.title = element_text(hjust = 0.5, size = 20))+
   scale_x_discrete(expand = c(0.3, 0))+
   ylim(0,1)
 
