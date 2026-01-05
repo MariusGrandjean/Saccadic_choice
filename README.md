@@ -1,4 +1,6 @@
-This repository is for a saccadic choice task experiment using a similar design as in Crouzet et al. (2010) and Kauffmann et al. (2019). The only particularity is that we are also displaying the stimuli along the vertical axis.
+This is the official repository of the paper "Does radial bias influence fast saccades towards faces in the periphery" (https://doi.org/10.1167/jov.25.14.16).
+
+It consists in a saccadic choice task experiment using a similar design as in Crouzet et al. (2010) and Kauffmann et al. (2019). The only particularity is that we are also displaying the stimuli along the vertical axis.
 
 The first prompt will ask informations to create an EDF file.
 
